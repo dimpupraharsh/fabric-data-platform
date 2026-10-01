@@ -2,16 +2,19 @@
   "dev": {
     "workspace_id": "9dbe1dca-7893-45ea-bb87-e22e4225bc42",
     "client_id": "cf499cfd-b990-46d1-8e1b-6a708f64836e",
+    "deployment_principal_id": "e47f7b7d-f486-4ddd-a4b0-a554e7c17693",
+    "runtime_principal_id": "c98e15f0-5bc5-4594-8bde-0893320cef44",
     "tenant_id": "cf22b271-7261-4a07-9b4f-a04dde6ba1b1",
     "connections": {
       "ffb74af9-9d17-4429-8493-02465e631244": "10e3aa56-c54e-4bda-84e1-5ab3c09d5c39",
       "0a85b5ac-b0d0-4686-9de2-c3bf62dac800": "92895f3e-2e18-4abd-8805-16b3ad961e5c",
       "e3607aae-ab0a-4954-968c-613ebd192eeb": "e3607aae-ab0a-4954-968c-613ebd192eeb",
-      "2977a806-dd08-4233-b4d1-bd1521ec0d16": "2977a806-dd08-4233-b4d1-bd1521ec0d16"
+      "2977a806-dd08-4233-b4d1-bd1521ec0d16": "2977a806-dd08-4233-b4d1-bd1521ec0d16",
+      "aedad88b-3c1c-470e-8f95-bfafb37f40c5": "5dcba5fa-f214-44e0-a1d0-45471c2867db"
     },
-    "release_enabled": false,
+    "release_enabled": true,
     "sql_migrations_enabled": true,
-    "semantic_enabled": false,
+    "semantic_enabled": true,
     "schedule_enabled": false,
     "shared_read_connections": [
       "e3607aae-ab0a-4954-968c-613ebd192eeb",
@@ -21,16 +24,19 @@
   "test": {
     "workspace_id": "74fa18f7-20d4-4800-9051-6796923b397a",
     "client_id": "f9b487d8-17a6-4b71-b993-3c384f605d20",
+    "deployment_principal_id": "07ecc205-2be3-41da-a83f-03892cbffd74",
+    "runtime_principal_id": "bae7717d-b085-4f13-9c32-7805a51801eb",
     "tenant_id": "cf22b271-7261-4a07-9b4f-a04dde6ba1b1",
     "connections": {
       "ffb74af9-9d17-4429-8493-02465e631244": "d5bda5f6-f920-4043-b14a-3bdb6a6694b6",
       "0a85b5ac-b0d0-4686-9de2-c3bf62dac800": "04275007-8b50-48f8-9f16-925b5a725467",
       "e3607aae-ab0a-4954-968c-613ebd192eeb": "e3607aae-ab0a-4954-968c-613ebd192eeb",
-      "2977a806-dd08-4233-b4d1-bd1521ec0d16": "2977a806-dd08-4233-b4d1-bd1521ec0d16"
+      "2977a806-dd08-4233-b4d1-bd1521ec0d16": "2977a806-dd08-4233-b4d1-bd1521ec0d16",
+      "aedad88b-3c1c-470e-8f95-bfafb37f40c5": "f57dc90f-19cd-4c60-acdd-317614c22ab5"
     },
-    "release_enabled": false,
+    "release_enabled": true,
     "sql_migrations_enabled": true,
-    "semantic_enabled": false,
+    "semantic_enabled": true,
     "schedule_enabled": false,
     "shared_read_connections": [
       "e3607aae-ab0a-4954-968c-613ebd192eeb",
@@ -40,6 +46,7 @@
   "production": {
     "workspace_id": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
     "client_id": "a80a8102-ef19-49e0-b883-0a886c7b21f3",
+    "deployment_principal_id": "f83cc9ac-1416-4bc6-ac02-33d217ffd964",
     "tenant_id": "cf22b271-7261-4a07-9b4f-a04dde6ba1b1",
     "connections": {
       "e3607aae-ab0a-4954-968c-613ebd192eeb": "e3607aae-ab0a-4954-968c-613ebd192eeb",

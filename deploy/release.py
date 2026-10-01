@@ -45,7 +45,7 @@ def prepare(environment, stage):
     config = json.loads((ROOT / "config/environments.json").read_text())[environment]
     inventory = json.loads((ROOT / "config/source_inventory.json").read_text())
     if stage != "foundation" and not config["release_enabled"]:
-        raise RuntimeError(f"{environment} release is disabled until bindings and integration gates pass")
+        raise RuntimeError(f"{environment} release is disabled pending approved environment readiness gates")
     if stage == "semantic" and not config["semantic_enabled"]:
         raise RuntimeError("Semantic schema and connection readiness gate is not approved")
     output = ROOT / "build" / environment

@@ -43,8 +43,9 @@ def main():
                 if present:
                     raise RuntimeError(f"Production reference in {item['displayName']}/{part['path']}: {sorted(present)}")
         checked.append(item["displayName"])
-    if not checked:
-        raise RuntimeError("No application definitions were deployed")
+    expected = {x["name"] for x in inventory["items"] if x["type"] in ("Notebook", "DataPipeline", "SemanticModel")}
+    if expected - set(checked):
+        raise RuntimeError(f"Application definitions missing: {sorted(expected - set(checked))}")
     print(json.dumps({"environment": args.environment, "status": "passed", "checked_definitions": len(checked)}))
 
 
