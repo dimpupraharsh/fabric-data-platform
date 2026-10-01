@@ -1,0 +1,363 @@
+{
+  "properties": {
+    "description": "Resolves approved source metadata and routes PostgreSQL deltas, master snapshots, or S3 reference snapshots. Snapshots append run-tagged SCD2 history; facts/events use bounded watermarks. Runs only when triggered or scheduled.",
+    "parameters": {
+      "source_object_id": {
+        "type": "String"
+      },
+      "partition_lower_key": {
+        "type": "String",
+        "defaultValue": "0"
+      },
+      "partition_upper_key": {
+        "type": "String",
+        "defaultValue": "0"
+      },
+      "partition_write_mode": {
+        "type": "String",
+        "defaultValue": "append"
+      }
+    },
+    "activities": [
+      {
+        "name": "ResolveSourceObjectMetadata",
+        "type": "Script",
+        "dependsOn": [],
+        "policy": {
+          "timeout": "0.00:05:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": {
+                "value": "@concat('SELECT source_object_id, source_system_code, source_engine, source_object_name, source_schema_name, source_table_name, source_locator, bronze_target_name, load_strategy, watermark_column, tie_breaker_column, initial_load_completed, load_status, contract_version, drift_action FROM control.vw_active_source_objects WHERE source_object_id = ', pipeline().parameters.source_object_id, ' AND source_engine IN (''postgresql'', ''amazon_s3'') AND load_strategy IN (''snapshot_append'', ''full_refresh'', ''watermark'', ''full_snapshot'');')",
+                "type": "Expression"
+              }
+            }
+          ],
+          "scriptBlockExecutionTimeout": "00:02:00"
+        },
+        "externalReferences": {
+          "connection": "ffb74af9-9d17-4429-8493-02465e631244"
+        },
+        "description": "Reads the active source-object configuration from wh_retail_control so the parent can route using approved source, target, connection, and load-strategy metadata."
+      },
+      {
+        "name": "DispatchPostgreSqlBaselineOverwrite",
+        "type": "IfCondition",
+        "dependsOn": [
+          {
+            "activity": "ResolveSourceObjectMetadata",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "expression": {
+            "value": "@and(equals(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_engine, 'postgresql'), equals(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].load_strategy, 'watermark'), equals(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].initial_load_completed, false), equals(pipeline().parameters.partition_write_mode, 'overwrite'))",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [
+            {
+              "name": "RunPostgreSqlPartitionOverwriteChild",
+              "type": "ExecutePipeline",
+              "dependsOn": [],
+              "policy": {
+                "secureInput": false
+              },
+              "typeProperties": {
+                "pipeline": {
+                  "referenceName": "392caa98-d9c2-4cfd-9199-c081c60790c5",
+                  "type": "PipelineReference"
+                },
+                "parameters": {
+                  "source_object_id": {
+                    "value": "@string(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_object_id)",
+                    "type": "Expression"
+                  },
+                  "source_schema": {
+                    "value": "@activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_schema_name",
+                    "type": "Expression"
+                  },
+                  "source_table": {
+                    "value": "@activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_table_name",
+                    "type": "Expression"
+                  },
+                  "partition_column": {
+                    "value": "@activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].tie_breaker_column",
+                    "type": "Expression"
+                  },
+                  "lower_key": {
+                    "value": "@pipeline().parameters.partition_lower_key",
+                    "type": "Expression"
+                  },
+                  "upper_key": {
+                    "value": "@pipeline().parameters.partition_upper_key",
+                    "type": "Expression"
+                  },
+                  "bronze_target": {
+                    "value": "@activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].bronze_target_name",
+                    "type": "Expression"
+                  }
+                },
+                "waitOnCompletion": true
+              },
+              "description": "Invokes the one-time PostgreSQL partition initializer with the configured key bounds and Bronze target; not used for recurring incrementals."
+            }
+          ]
+        },
+        "description": "Checks whether an explicitly requested first baseline partition uses overwrite initialization; only the approved initial range takes this path."
+      },
+      {
+        "name": "DispatchPostgreSqlBaselineAppend",
+        "type": "IfCondition",
+        "dependsOn": [
+          {
+            "activity": "ResolveSourceObjectMetadata",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "expression": {
+            "value": "@and(equals(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_engine, 'postgresql'), equals(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].load_strategy, 'watermark'), equals(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].initial_load_completed, false), equals(pipeline().parameters.partition_write_mode, 'append'))",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [
+            {
+              "name": "RunPostgreSqlPartitionAppendChild",
+              "type": "ExecutePipeline",
+              "dependsOn": [],
+              "policy": {
+                "secureInput": false
+              },
+              "typeProperties": {
+                "pipeline": {
+                  "referenceName": "be2e54f2-531c-4c3f-8cdd-71db6456c5f5",
+                  "type": "PipelineReference"
+                },
+                "parameters": {
+                  "source_object_id": {
+                    "value": "@string(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_object_id)",
+                    "type": "Expression"
+                  },
+                  "source_schema": {
+                    "value": "@activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_schema_name",
+                    "type": "Expression"
+                  },
+                  "source_table": {
+                    "value": "@activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_table_name",
+                    "type": "Expression"
+                  },
+                  "partition_column": {
+                    "value": "@activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].tie_breaker_column",
+                    "type": "Expression"
+                  },
+                  "lower_key": {
+                    "value": "@pipeline().parameters.partition_lower_key",
+                    "type": "Expression"
+                  },
+                  "upper_key": {
+                    "value": "@pipeline().parameters.partition_upper_key",
+                    "type": "Expression"
+                  },
+                  "bronze_target": {
+                    "value": "@activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].bronze_target_name",
+                    "type": "Expression"
+                  }
+                },
+                "waitOnCompletion": true
+              },
+              "description": "Copies the requested lower-exclusive, upper-inclusive PostgreSQL partition to the existing Bronze baseline target."
+            }
+          ]
+        },
+        "description": "Checks whether the requested baseline continuation uses append semantics for a non-overlapping PostgreSQL key range."
+      },
+      {
+        "name": "DispatchPostgreSqlFullRefresh",
+        "type": "IfCondition",
+        "dependsOn": [
+          {
+            "activity": "ResolveSourceObjectMetadata",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "expression": {
+            "value": "@and(equals(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_engine, 'postgresql'), or(equals(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].load_strategy, 'snapshot_append'), equals(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].load_strategy, 'full_refresh'))) ",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [
+            {
+              "name": "RunPostgreSqlFullRefreshChild",
+              "type": "ExecutePipeline",
+              "dependsOn": [],
+              "policy": {
+                "secureInput": false
+              },
+              "typeProperties": {
+                "pipeline": {
+                  "referenceName": "474b2a0d-90c1-4892-b1f8-532482336bf5",
+                  "type": "PipelineReference"
+                },
+                "parameters": {
+                  "source_object_id": {
+                    "value": "@string(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_object_id)",
+                    "type": "Expression"
+                  },
+                  "source_schema": {
+                    "value": "@activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_schema_name",
+                    "type": "Expression"
+                  },
+                  "source_table": {
+                    "value": "@activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_table_name",
+                    "type": "Expression"
+                  },
+                  "bronze_target": {
+                    "value": "@activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].bronze_target_name",
+                    "type": "Expression"
+                  }
+                },
+                "waitOnCompletion": true
+              },
+              "description": "Appends a run-tagged customer or product snapshot to Bronze so Silver can observe source history."
+            }
+          ]
+        },
+        "description": "Routes an approved small PostgreSQL master snapshot to the append-with-lineage child; the source watermark is not advanced."
+      },
+      {
+        "name": "DispatchPostgreSqlWatermark",
+        "type": "IfCondition",
+        "dependsOn": [
+          {
+            "activity": "ResolveSourceObjectMetadata",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "expression": {
+            "value": "@and(equals(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].load_strategy, 'watermark'), equals(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].initial_load_completed, true))",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [
+            {
+              "name": "RunPostgreSqlWatermarkChild",
+              "type": "ExecutePipeline",
+              "dependsOn": [],
+              "policy": {
+                "secureInput": false
+              },
+              "typeProperties": {
+                "pipeline": {
+                  "referenceName": "d3adcc89-45e2-417b-8af6-b39cde4c4893",
+                  "type": "PipelineReference"
+                },
+                "parameters": {
+                  "source_object_id": {
+                    "value": "@string(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_object_id)",
+                    "type": "Expression"
+                  },
+                  "source_schema": {
+                    "value": "@activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_schema_name",
+                    "type": "Expression"
+                  },
+                  "source_table": {
+                    "value": "@activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_table_name",
+                    "type": "Expression"
+                  },
+                  "bronze_target": {
+                    "value": "@activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].bronze_target_name",
+                    "type": "Expression"
+                  },
+                  "watermark_column": {
+                    "value": "@activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].watermark_column",
+                    "type": "Expression"
+                  },
+                  "tie_breaker_column": {
+                    "value": "@activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].tie_breaker_column",
+                    "type": "Expression"
+                  }
+                },
+                "waitOnCompletion": true
+              },
+              "description": "Runs the reusable bounded PostgreSQL delta child with the metadata-defined table, watermark, tie-breaker, and Bronze target."
+            }
+          ]
+        },
+        "description": "Routes transactional PostgreSQL objects to bounded watermark extraction when their configured load strategy is watermark_incremental."
+      },
+      {
+        "name": "DispatchS3Snapshot",
+        "type": "IfCondition",
+        "dependsOn": [
+          {
+            "activity": "ResolveSourceObjectMetadata",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "expression": {
+            "value": "@and(equals(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_engine, 'amazon_s3'), or(equals(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].load_strategy, 'snapshot_append'), equals(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].load_strategy, 'full_snapshot'))) ",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [
+            {
+              "name": "RunS3SnapshotChild",
+              "type": "ExecutePipeline",
+              "dependsOn": [],
+              "policy": {
+                "secureInput": false
+              },
+              "typeProperties": {
+                "pipeline": {
+                  "referenceName": "03588d93-cfc8-4121-ac7b-72a846bb8147",
+                  "type": "PipelineReference"
+                },
+                "parameters": {
+                  "source_object_id": {
+                    "value": "@string(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_object_id)",
+                    "type": "Expression"
+                  },
+                  "source_object_name": {
+                    "value": "@activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_object_name",
+                    "type": "Expression"
+                  },
+                  "source_folder": {
+                    "value": "@concat('retail_ref/', replace(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_object_name, 's3.', ''))",
+                    "type": "Expression"
+                  },
+                  "source_file": {
+                    "value": "@concat(replace(activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].source_object_name, 's3.', ''), '.csv')",
+                    "type": "Expression"
+                  },
+                  "bronze_target": {
+                    "value": "@activity('ResolveSourceObjectMetadata').output.resultSets[0].rows[0].bronze_target_name",
+                    "type": "Expression"
+                  }
+                },
+                "waitOnCompletion": true
+              },
+              "description": "Invokes the S3 CSV snapshot child using the configured object, source prefix/file, and Bronze target."
+            }
+          ]
+        },
+        "description": "Routes an approved S3 reference file to full-snapshot ingestion only when explicitly invoked; S3 does not use row-level watermarks."
+      }
+    ]
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "dev": {
+    "workspace_id": "9dbe1dca-7893-45ea-bb87-e22e4225bc42",
+    "client_id": "cf499cfd-b990-46d1-8e1b-6a708f64836e",
+    "tenant_id": "cf22b271-7261-4a07-9b4f-a04dde6ba1b1",
+    "connections": {},
+    "release_enabled": false,
+    "sql_migrations_enabled": true,
+    "semantic_enabled": false,
+    "schedule_enabled": false
+  },
+  "test": {
+    "workspace_id": "74fa18f7-20d4-4800-9051-6796923b397a",
+    "client_id": "f9b487d8-17a6-4b71-b993-3c384f605d20",
+    "tenant_id": "cf22b271-7261-4a07-9b4f-a04dde6ba1b1",
+    "connections": {},
+    "release_enabled": false,
+    "sql_migrations_enabled": true,
+    "semantic_enabled": false,
+    "schedule_enabled": false
+  },
+  "production": {
+    "workspace_id": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
+    "client_id": "a80a8102-ef19-49e0-b883-0a886c7b21f3",
+    "tenant_id": "cf22b271-7261-4a07-9b4f-a04dde6ba1b1",
+    "connections": {
+      "e3607aae-ab0a-4954-968c-613ebd192eeb": "e3607aae-ab0a-4954-968c-613ebd192eeb",
+      "2977a806-dd08-4233-b4d1-bd1521ec0d16": "2977a806-dd08-4233-b4d1-bd1521ec0d16",
+      "ffb74af9-9d17-4429-8493-02465e631244": "ffb74af9-9d17-4429-8493-02465e631244",
+      "0a85b5ac-b0d0-4686-9de2-c3bf62dac800": "0a85b5ac-b0d0-4686-9de2-c3bf62dac800",
+      "aedad88b-3c1c-470e-8f95-bfafb37f40c5": "aedad88b-3c1c-470e-8f95-bfafb37f40c5"
+    },
+    "release_enabled": false,
+    "sql_migrations_enabled": false,
+    "semantic_enabled": false,
+    "schedule_enabled": true
+  }
+}

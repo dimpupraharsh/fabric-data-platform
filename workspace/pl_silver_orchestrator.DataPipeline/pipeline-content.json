@@ -1,0 +1,476 @@
+{
+  "properties": {
+    "description": "Runs Silver in order: lock, set arrival boundary, build SCD dimensions/coverage, merge events and sales, reconcile, then commit. Failures are logged and release locks; baseline rebuilds, incremental processes new arrivals.",
+    "parameters": {
+      "load_mode": {
+        "type": "String",
+        "defaultValue": "incremental"
+      }
+    },
+    "activities": [
+      {
+        "name": "StartSilverRunAndAcquireLocks",
+        "type": "Script",
+        "dependsOn": [],
+        "policy": {
+          "timeout": "0.00:05:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": {
+                "value": "@concat('EXEC control.sp_start_silver_run @pipeline_run_id = ''', pipeline().RunId, ''', @load_mode = ''', pipeline().parameters.load_mode, ''';')",
+                "type": "Expression"
+              }
+            }
+          ],
+          "scriptBlockExecutionTimeout": "00:02:00"
+        },
+        "externalReferences": {
+          "connection": "ffb74af9-9d17-4429-8493-02465e631244"
+        },
+        "description": "Creates the Silver run record and acquires transform locks so overlapping executions cannot write the same targets."
+      },
+      {
+        "name": "ResolveSilverIngestLowerBound",
+        "type": "Script",
+        "dependsOn": [
+          {
+            "activity": "StartSilverRunAndAcquireLocks",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.00:05:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": {
+                "value": "SELECT COALESCE(CONVERT(VARCHAR(33), MIN(last_success_ts), 126), '1900-01-01T00:00:00.000') AS lower_bound_ts FROM control.ctl_transform_state WHERE baseline_completed = CAST(1 AS BIT);",
+                "type": "Expression"
+              }
+            }
+          ],
+          "scriptBlockExecutionTimeout": "00:02:00"
+        },
+        "externalReferences": {
+          "connection": "ffb74af9-9d17-4429-8493-02465e631244"
+        },
+        "description": "Reads the last committed Silver arrival boundary used by event and sales notebooks to select newly landed Bronze versions."
+      },
+      {
+        "name": "BuildSilverDimensionsAndBridges",
+        "type": "TridentNotebook",
+        "dependsOn": [
+          {
+            "activity": "ResolveSilverIngestLowerBound",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.06:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "notebookId": "baff3993-17eb-4514-9ae3-fc3a6d586083",
+          "workspaceId": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
+          "parameters": {
+            "pipeline_run_id": {
+              "value": "@pipeline().RunId",
+              "type": "string"
+            },
+            "load_mode": {
+              "value": "@pipeline().parameters.load_mode",
+              "type": "string"
+            }
+          }
+        },
+        "description": "Runs the dimensions notebook to conform customer, product, category, location, and warehouse coverage history before facts resolve keys."
+      },
+      {
+        "name": "BuildSilverEventFacts",
+        "type": "TridentNotebook",
+        "dependsOn": [
+          {
+            "activity": "BuildSilverDimensionsAndBridges",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.06:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "notebookId": "45fa2f38-3b1b-4402-99dd-e7e9d32a4310",
+          "workspaceId": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
+          "parameters": {
+            "pipeline_run_id": {
+              "value": "@pipeline().RunId",
+              "type": "string"
+            },
+            "load_mode": {
+              "value": "@pipeline().parameters.load_mode",
+              "type": "string"
+            },
+            "lower_bound_ts": {
+              "value": "@activity('ResolveSilverIngestLowerBound').output.resultSets[0].rows[0].lower_bound_ts",
+              "type": "string"
+            }
+          }
+        },
+        "description": "Runs the event notebook to standardize and idempotently merge order, shipment, and payment events by source event key."
+      },
+      {
+        "name": "BuildSilverSalesFact",
+        "type": "TridentNotebook",
+        "dependsOn": [
+          {
+            "activity": "BuildSilverEventFacts",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "notebookId": "6abffcba-c1f6-41ff-8919-d32398ab0c83",
+          "workspaceId": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
+          "parameters": {
+            "pipeline_run_id": {
+              "value": "@pipeline().RunId",
+              "type": "string"
+            },
+            "load_mode": {
+              "value": "@pipeline().parameters.load_mode",
+              "type": "string"
+            },
+            "lower_bound_ts": {
+              "value": "@activity('ResolveSilverIngestLowerBound').output.resultSets[0].rows[0].lower_bound_ts",
+              "type": "string"
+            }
+          }
+        },
+        "description": "Runs the sales notebook to resolve line items against SCD dimensions as of order date and write accepted facts or hard rejects."
+      },
+      {
+        "name": "BuildSilverOrderFact",
+        "type": "TridentNotebook",
+        "dependsOn": [
+          {
+            "activity": "BuildSilverSalesFact",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "notebookId": "2cc8ba3a-17d3-4fd3-a760-91fd15119995",
+          "workspaceId": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
+          "parameters": {
+            "pipeline_run_id": {
+              "value": "@pipeline().RunId",
+              "type": "string"
+            },
+            "load_mode": {
+              "value": "@pipeline().parameters.load_mode",
+              "type": "string"
+            },
+            "lower_bound_ts": {
+              "value": "@activity('ResolveSilverIngestLowerBound').output.resultSets[0].rows[0].lower_bound_ts",
+              "type": "string"
+            }
+          }
+        },
+        "description": "Merges the complete-population order header by order number, retaining current lifecycle/payment/fulfillment state and source quality flags."
+      },
+      {
+        "name": "ReconcileSilverModel",
+        "type": "TridentNotebook",
+        "dependsOn": [
+          {
+            "activity": "BuildSilverOrderFact",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "notebookId": "5c493da3-0ada-42a0-800b-883c03d68740",
+          "workspaceId": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
+          "parameters": {
+            "pipeline_run_id": {
+              "value": "@pipeline().RunId",
+              "type": "string"
+            },
+            "load_mode": {
+              "value": "@pipeline().parameters.load_mode",
+              "type": "string"
+            },
+            "bronze_workspace_id": {
+              "value": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
+              "type": "string"
+            },
+            "bronze_lakehouse_id": {
+              "value": "ed2e34f8-b837-43c6-b6ba-de68cd7e0079",
+              "type": "string"
+            }
+          }
+        },
+        "description": "Runs hard Silver integrity assertions; the parent cannot commit success unless keys, counts, histories, and event uniqueness reconcile."
+      },
+      {
+        "name": "CommitSilverRunSuccess",
+        "type": "Script",
+        "dependsOn": [
+          {
+            "activity": "ReconcileSilverModel",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.00:05:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": {
+                "value": "@concat('EXEC control.sp_finish_silver_run @pipeline_run_id = ''', pipeline().RunId, ''', @run_status = ''succeeded'';')",
+                "type": "Expression"
+              }
+            }
+          ],
+          "scriptBlockExecutionTimeout": "00:02:00"
+        },
+        "externalReferences": {
+          "connection": "ffb74af9-9d17-4429-8493-02465e631244"
+        },
+        "description": "Marks the Silver run successful and advances transform state only after all builds and reconciliation pass."
+      },
+      {
+        "name": "LogDimensionsFailure",
+        "type": "Script",
+        "dependsOn": [
+          {
+            "activity": "BuildSilverDimensionsAndBridges",
+            "dependencyConditions": [
+              "Failed"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.00:05:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": {
+                "value": "@concat('EXEC control.sp_finish_silver_run @pipeline_run_id = ''', pipeline().RunId, ''', @run_status = ''failed'', @error_message = ''Silver dimensions notebook failed; inspect Fabric activity output.'';')",
+                "type": "Expression"
+              }
+            }
+          ],
+          "scriptBlockExecutionTimeout": "00:02:00"
+        },
+        "externalReferences": {
+          "connection": "ffb74af9-9d17-4429-8493-02465e631244"
+        },
+        "description": "Marks the Silver run failed after the dimensions notebook fails and records a diagnostic message for operators."
+      },
+      {
+        "name": "LogEventsFailure",
+        "type": "Script",
+        "dependsOn": [
+          {
+            "activity": "BuildSilverEventFacts",
+            "dependencyConditions": [
+              "Failed"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.00:05:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": {
+                "value": "@concat('EXEC control.sp_finish_silver_run @pipeline_run_id = ''', pipeline().RunId, ''', @run_status = ''failed'', @error_message = ''Silver events notebook failed; inspect Fabric activity output.'';')",
+                "type": "Expression"
+              }
+            }
+          ],
+          "scriptBlockExecutionTimeout": "00:02:00"
+        },
+        "externalReferences": {
+          "connection": "ffb74af9-9d17-4429-8493-02465e631244"
+        },
+        "description": "Marks the Silver run failed after the event notebook fails and records a diagnostic message for operators."
+      },
+      {
+        "name": "LogSalesFailure",
+        "type": "Script",
+        "dependsOn": [
+          {
+            "activity": "BuildSilverSalesFact",
+            "dependencyConditions": [
+              "Failed"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.00:05:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": {
+                "value": "@concat('EXEC control.sp_finish_silver_run @pipeline_run_id = ''', pipeline().RunId, ''', @run_status = ''failed'', @error_message = ''Silver sales notebook failed; inspect Fabric activity output.'';')",
+                "type": "Expression"
+              }
+            }
+          ],
+          "scriptBlockExecutionTimeout": "00:02:00"
+        },
+        "externalReferences": {
+          "connection": "ffb74af9-9d17-4429-8493-02465e631244"
+        },
+        "description": "Marks the Silver run failed after the sales notebook fails and records a diagnostic message for operators."
+      },
+      {
+        "name": "LogOrderFactFailure",
+        "type": "Script",
+        "dependsOn": [
+          {
+            "activity": "BuildSilverOrderFact",
+            "dependencyConditions": [
+              "Failed"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.00:05:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": {
+                "value": "@concat('EXEC control.sp_finish_silver_run @pipeline_run_id = ''', pipeline().RunId, ''', @run_status = ''failed'', @error_message = ''Silver order header notebook failed; inspect Fabric activity output.'';')",
+                "type": "Expression"
+              }
+            }
+          ],
+          "scriptBlockExecutionTimeout": "00:02:00"
+        },
+        "externalReferences": {
+          "connection": "ffb74af9-9d17-4429-8493-02465e631244"
+        },
+        "description": "Marks the Silver run failed if order-header conformance fails, preserving its checkpoint for a safe retry."
+      },
+      {
+        "name": "LogReconciliationFailure",
+        "type": "Script",
+        "dependsOn": [
+          {
+            "activity": "ReconcileSilverModel",
+            "dependencyConditions": [
+              "Failed"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.00:05:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": {
+                "value": "@concat('EXEC control.sp_finish_silver_run @pipeline_run_id = ''', pipeline().RunId, ''', @run_status = ''failed'', @error_message = ''Silver reconciliation failed; inspect reconciliation_result and Fabric activity output.'';')",
+                "type": "Expression"
+              }
+            }
+          ],
+          "scriptBlockExecutionTimeout": "00:02:00"
+        },
+        "externalReferences": {
+          "connection": "ffb74af9-9d17-4429-8493-02465e631244"
+        },
+        "description": "Marks the Silver run failed when a hard invariant fails; inspect reconciliation_result and notebook output before retrying."
+      }
+    ]
+  }
+}

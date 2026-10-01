@@ -1,0 +1,140 @@
+table dim_product
+	lineageTag: 5d2304bc-b630-43f5-9887-89de10571245
+	sourceLineageTag: [gold].[dim_product]
+
+	column product_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 16e47310-5f9a-454d-ae86-0c3fc5db52c8
+		sourceLineageTag: product_key
+		summarizeBy: sum
+		sourceColumn: product_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column product_entity_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 0e00106d-2f0e-4d2c-880e-22ea395bbd90
+		sourceLineageTag: product_entity_key
+		summarizeBy: sum
+		sourceColumn: product_entity_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column product_business_key
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: 430499bc-daed-4ce7-b12c-c33dfb6c14e9
+		sourceLineageTag: product_business_key
+		summarizeBy: none
+		sourceColumn: product_business_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column product_name
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: 738ba175-0af5-4476-8322-d9093079e7fe
+		sourceLineageTag: product_name
+		summarizeBy: none
+		sourceColumn: product_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column product_line
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: 02235fd5-c46e-4343-b80b-d9fc9b65f954
+		sourceLineageTag: product_line
+		summarizeBy: none
+		sourceColumn: product_line
+
+		annotation SummarizationSetBy = Automatic
+
+	column category_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 5a915b71-b4bd-4c99-bb08-485a8838f2a7
+		sourceLineageTag: category_key
+		summarizeBy: sum
+		sourceColumn: category_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column category
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: 19e1a24d-b541-439b-ab08-a30245add674
+		sourceLineageTag: category
+		summarizeBy: none
+		sourceColumn: category
+
+		annotation SummarizationSetBy = Automatic
+
+	column subcategory
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: 687a4e0a-ab60-4f77-81d2-421ed83108e0
+		sourceLineageTag: subcategory
+		summarizeBy: none
+		sourceColumn: subcategory
+
+		annotation SummarizationSetBy = Automatic
+
+	column dwh_effective_from
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: datetime2
+		lineageTag: 015b94a7-b219-426d-a5cc-4424192865e9
+		sourceLineageTag: dwh_effective_from
+		summarizeBy: none
+		sourceColumn: dwh_effective_from
+
+		annotation SummarizationSetBy = Automatic
+
+	column dwh_effective_to
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: datetime2
+		lineageTag: 712f25ab-044d-4827-bc3f-a7fdfe730b63
+		sourceLineageTag: dwh_effective_to
+		summarizeBy: none
+		sourceColumn: dwh_effective_to
+
+		annotation SummarizationSetBy = Automatic
+
+	column dwh_is_current
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		sourceProviderType: bit
+		lineageTag: a4762e0a-d0ee-46f1-833d-6c9675632d49
+		sourceLineageTag: dwh_is_current
+		summarizeBy: none
+		sourceColumn: dwh_is_current
+
+		annotation SummarizationSetBy = Automatic
+
+	column dwh_is_inferred
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		sourceProviderType: bit
+		lineageTag: 1c43c96a-4eb1-4c8e-a617-ad442c0321aa
+		sourceLineageTag: dwh_is_inferred
+		summarizeBy: none
+		sourceColumn: dwh_is_inferred
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_product = entity
+		mode: directLake
+		source
+			entityName: dim_product
+			schemaName: gold
+			expressionSource: DatabaseQuery
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,694 @@
+{
+  "properties": {
+    "description": "Incremental PostgreSQL child: lock the object, freeze inclusive dwh_load_ts/key bounds, prepare a batch, copy its delta with lineage, validate and write a manifest, then commit. Failures do not advance the watermark; retries replay the interval.",
+    "parameters": {
+      "source_object_id": {
+        "type": "String"
+      },
+      "source_schema": {
+        "type": "String",
+        "defaultValue": "retail_oi"
+      },
+      "source_table": {
+        "type": "String"
+      },
+      "bronze_target": {
+        "type": "String"
+      },
+      "watermark_column": {
+        "type": "String",
+        "defaultValue": "dwh_load_ts"
+      },
+      "tie_breaker_column": {
+        "type": "String"
+      }
+    },
+    "activities": [
+      {
+        "name": "CaptureUpperBoundAndSchema",
+        "type": "Lookup",
+        "dependsOn": [],
+        "policy": {
+          "timeout": "0.02:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "source": {
+            "type": "PostgreSqlSource",
+            "partitionOption": "None",
+            "queryTimeout": "02:00:00",
+            "query": {
+              "value": "@concat('SELECT COALESCE(to_char(u.upper_watermark AT TIME ZONE ''UTC'', ''YYYY-MM-DD\"T\"HH24:MI:SS.MS''), ''1900-01-01T00:00:00.000'') AS upper_watermark, COALESCE(u.upper_tie_breaker, ''0'') AS upper_tie_breaker, c.columns_csv, c.schema_json FROM (SELECT string_agg(lower(column_name), '','' ORDER BY ordinal_position) AS columns_csv, json_agg(json_build_object(''name'', lower(column_name), ''type'', lower(data_type), ''ordinal_position'', ordinal_position) ORDER BY ordinal_position)::text AS schema_json FROM information_schema.columns WHERE table_schema = ''', pipeline().parameters.source_schema, ''' AND table_name = ''', pipeline().parameters.source_table, ''') c LEFT JOIN LATERAL (SELECT \"', pipeline().parameters.watermark_column, '\" AS upper_watermark, \"', pipeline().parameters.tie_breaker_column, '\"::text AS upper_tie_breaker FROM \"', pipeline().parameters.source_schema, '\".\"', pipeline().parameters.source_table, '\" ORDER BY \"', pipeline().parameters.watermark_column, '\" DESC, \"', pipeline().parameters.tie_breaker_column, '\" DESC LIMIT 1) u ON TRUE')",
+              "type": "Expression"
+            }
+          },
+          "firstRowOnly": true,
+          "datasetSettings": {
+            "annotations": [],
+            "type": "PostgreSqlTable",
+            "schema": [],
+            "typeProperties": {
+              "schema": {
+                "value": "@pipeline().parameters.source_schema",
+                "type": "Expression"
+              },
+              "table": {
+                "value": "@pipeline().parameters.source_table",
+                "type": "Expression"
+              }
+            },
+            "version": "2.0",
+            "externalReferences": {
+              "connection": "e3607aae-ab0a-4954-968c-613ebd192eeb"
+            }
+          }
+        },
+        "description": "Captures a fixed source-side upper watermark and observed schema so this run processes a bounded, auditable interval."
+      },
+      {
+        "name": "PrepareControlledBatch",
+        "type": "Script",
+        "dependsOn": [
+          {
+            "activity": "CaptureUpperBoundAndSchema",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.00:05:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": {
+                "value": "@concat('EXEC control.sp_prepare_bronze_watermark_run @pipeline_run_id = ''', pipeline().RunId, ''', @parent_pipeline_run_id = ''', pipeline().TriggeredByPipelineRunId, ''', @source_object_id = ', pipeline().parameters.source_object_id, ', @upper_watermark = ''', activity('CaptureUpperBoundAndSchema').output.firstRow.upper_watermark, ''', @upper_tie_breaker = ''', activity('CaptureUpperBoundAndSchema').output.firstRow.upper_tie_breaker, ''', @observed_columns_csv = ''', activity('CaptureUpperBoundAndSchema').output.firstRow.columns_csv, ''', @observed_schema_json = ''', replace(activity('CaptureUpperBoundAndSchema').output.firstRow.schema_json, '''', ''''''), ''';')",
+                "type": "Expression"
+              }
+            }
+          ],
+          "scriptBlockExecutionTimeout": "00:02:00"
+        },
+        "externalReferences": {
+          "connection": "ffb74af9-9d17-4429-8493-02465e631244"
+        },
+        "description": "Acquires the object lease and registers the deterministic batch and expected interval in the control warehouse before copying."
+      },
+      {
+        "name": "ProcessPreparedBatch",
+        "type": "IfCondition",
+        "dependsOn": [
+          {
+            "activity": "PrepareControlledBatch",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "expression": {
+            "value": "@equals(activity('PrepareControlledBatch').output.resultSets[0].rows[0].can_write, true)",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [
+            {
+              "name": "CountBoundedSourceRows",
+              "type": "Lookup",
+              "dependsOn": [],
+              "policy": {
+                "timeout": "0.02:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "source": {
+                  "type": "PostgreSqlSource",
+                  "partitionOption": "None",
+                  "queryTimeout": "02:00:00",
+                  "query": {
+                    "value": "@concat('SELECT COUNT(*)::bigint AS rows_expected FROM \"', pipeline().parameters.source_schema, '\".\"', pipeline().parameters.source_table, '\" WHERE (\"', pipeline().parameters.watermark_column, '\" > TIMESTAMPTZ ''', activity('PrepareControlledBatch').output.resultSets[0].rows[0].lower_watermark, '+00:00'' OR (\"', pipeline().parameters.watermark_column, '\" = TIMESTAMPTZ ''', activity('PrepareControlledBatch').output.resultSets[0].rows[0].lower_watermark, '+00:00'' AND \"', pipeline().parameters.tie_breaker_column, '\" > ', activity('PrepareControlledBatch').output.resultSets[0].rows[0].lower_tie_breaker, ')) AND (\"', pipeline().parameters.watermark_column, '\" < TIMESTAMPTZ ''', activity('PrepareControlledBatch').output.resultSets[0].rows[0].upper_watermark, '+00:00'' OR (\"', pipeline().parameters.watermark_column, '\" = TIMESTAMPTZ ''', activity('PrepareControlledBatch').output.resultSets[0].rows[0].upper_watermark, '+00:00'' AND \"', pipeline().parameters.tie_breaker_column, '\" <= ', activity('PrepareControlledBatch').output.resultSets[0].rows[0].upper_tie_breaker, '))')",
+                    "type": "Expression"
+                  }
+                },
+                "firstRowOnly": true,
+                "datasetSettings": {
+                  "annotations": [],
+                  "type": "PostgreSqlTable",
+                  "schema": [],
+                  "typeProperties": {
+                    "schema": {
+                      "value": "@pipeline().parameters.source_schema",
+                      "type": "Expression"
+                    },
+                    "table": {
+                      "value": "@pipeline().parameters.source_table",
+                      "type": "Expression"
+                    }
+                  },
+                  "version": "2.0",
+                  "externalReferences": {
+                    "connection": "e3607aae-ab0a-4954-968c-613ebd192eeb"
+                  }
+                }
+              },
+              "description": "Counts source rows inside the frozen lower/upper timestamp and tie-breaker bounds to establish the expected copy count."
+            },
+            {
+              "name": "RegisterExpectedRows",
+              "type": "Script",
+              "dependsOn": [
+                {
+                  "activity": "CountBoundedSourceRows",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ],
+              "policy": {
+                "timeout": "0.00:05:00",
+                "retry": 1,
+                "retryIntervalInSeconds": 30,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "scripts": [
+                  {
+                    "type": "Query",
+                    "text": {
+                      "value": "@concat('EXEC control.sp_set_bronze_expected_rows @pipeline_run_id = ''', pipeline().RunId, ''', @source_object_id = ', pipeline().parameters.source_object_id, ', @ingestion_batch_id = ''', activity('PrepareControlledBatch').output.resultSets[0].rows[0].ingestion_batch_id, ''', @rows_expected = ', activity('CountBoundedSourceRows').output.firstRow.rows_expected, ';')",
+                      "type": "Expression"
+                    }
+                  }
+                ],
+                "scriptBlockExecutionTimeout": "00:02:00"
+              },
+              "externalReferences": {
+                "connection": "ffb74af9-9d17-4429-8493-02465e631244"
+              },
+              "description": "Stores the source count for this object batch so Bronze validation can compare actual rows with the expected interval."
+            },
+            {
+              "name": "ResetStagedBatchForReplay",
+              "type": "TridentNotebook",
+              "dependsOn": [
+                {
+                  "activity": "RegisterExpectedRows",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ],
+              "policy": {
+                "timeout": "0.02:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "notebookId": "c58fda4b-7307-4472-9363-d97aa25e1fea",
+                "workspaceId": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
+                "parameters": {
+                  "operation": {
+                    "value": "reset_staged_batch",
+                    "type": "string"
+                  },
+                  "bronze_target": {
+                    "value": "@activity('PrepareControlledBatch').output.resultSets[0].rows[0].bronze_target_name",
+                    "type": "string"
+                  },
+                  "ingestion_batch_id": {
+                    "value": "@activity('PrepareControlledBatch').output.resultSets[0].rows[0].ingestion_batch_id",
+                    "type": "string"
+                  }
+                },
+                "sessionTag": {
+                  "value": "@concat('bronze-', pipeline().parameters.source_object_id)",
+                  "type": "Expression"
+                }
+              },
+              "description": "Deletes only an uncommitted partial Bronze copy tagged with this deterministic batch ID before retrying the same interval."
+            },
+            {
+              "name": "CopyBoundedRowsToBronze",
+              "type": "Copy",
+              "dependsOn": [
+                {
+                  "activity": "ResetStagedBatchForReplay",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ],
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "source": {
+                  "type": "PostgreSqlSource",
+                  "partitionOption": "None",
+                  "queryTimeout": "02:00:00",
+                  "query": {
+                    "value": "@concat('SELECT * FROM \"', pipeline().parameters.source_schema, '\".\"', pipeline().parameters.source_table, '\" WHERE (\"', pipeline().parameters.watermark_column, '\" > TIMESTAMPTZ ''', activity('PrepareControlledBatch').output.resultSets[0].rows[0].lower_watermark, '+00:00'' OR (\"', pipeline().parameters.watermark_column, '\" = TIMESTAMPTZ ''', activity('PrepareControlledBatch').output.resultSets[0].rows[0].lower_watermark, '+00:00'' AND \"', pipeline().parameters.tie_breaker_column, '\" > ', activity('PrepareControlledBatch').output.resultSets[0].rows[0].lower_tie_breaker, ')) AND (\"', pipeline().parameters.watermark_column, '\" < TIMESTAMPTZ ''', activity('PrepareControlledBatch').output.resultSets[0].rows[0].upper_watermark, '+00:00'' OR (\"', pipeline().parameters.watermark_column, '\" = TIMESTAMPTZ ''', activity('PrepareControlledBatch').output.resultSets[0].rows[0].upper_watermark, '+00:00'' AND \"', pipeline().parameters.tie_breaker_column, '\" <= ', activity('PrepareControlledBatch').output.resultSets[0].rows[0].upper_tie_breaker, ')) ORDER BY \"', pipeline().parameters.watermark_column, '\", \"', pipeline().parameters.tie_breaker_column, '\"')",
+                    "type": "Expression"
+                  },
+                  "additionalColumns": [
+                    {
+                      "name": "dwh_ingest_run_id",
+                      "value": {
+                        "value": "@pipeline().RunId",
+                        "type": "Expression"
+                      }
+                    },
+                    {
+                      "name": "dwh_source_object",
+                      "value": {
+                        "value": "@concat(pipeline().parameters.source_schema, '.', pipeline().parameters.source_table)",
+                        "type": "Expression"
+                      }
+                    },
+                    {
+                      "name": "dwh_ingest_ts",
+                      "value": {
+                        "value": "@utcnow()",
+                        "type": "Expression"
+                      }
+                    },
+                    {
+                      "name": "dwh_ingest_batch_id",
+                      "value": {
+                        "value": "@activity('PrepareControlledBatch').output.resultSets[0].rows[0].ingestion_batch_id",
+                        "type": "Expression"
+                      }
+                    }
+                  ],
+                  "datasetSettings": {
+                    "annotations": [],
+                    "type": "PostgreSqlTable",
+                    "schema": [],
+                    "typeProperties": {
+                      "schema": {
+                        "value": "@pipeline().parameters.source_schema",
+                        "type": "Expression"
+                      },
+                      "table": {
+                        "value": "@pipeline().parameters.source_table",
+                        "type": "Expression"
+                      }
+                    },
+                    "version": "2.0",
+                    "externalReferences": {
+                      "connection": "e3607aae-ab0a-4954-968c-613ebd192eeb"
+                    }
+                  }
+                },
+                "sink": {
+                  "type": "LakehouseTableSink",
+                  "tableActionOption": "Append",
+                  "applyVOrder": true,
+                  "datasetSettings": {
+                    "annotations": [],
+                    "connectionSettings": {
+                      "name": "DestinationLakehouse",
+                      "properties": {
+                        "annotations": [],
+                        "type": "Lakehouse",
+                        "typeProperties": {
+                          "workspaceId": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
+                          "artifactId": "ed2e34f8-b837-43c6-b6ba-de68cd7e0079",
+                          "rootFolder": "Tables"
+                        },
+                        "externalReferences": {
+                          "connection": "aedad88b-3c1c-470e-8f95-bfafb37f40c5"
+                        }
+                      }
+                    },
+                    "type": "LakehouseTable",
+                    "schema": [],
+                    "typeProperties": {
+                      "table": {
+                        "value": "@pipeline().parameters.bronze_target",
+                        "type": "Expression"
+                      }
+                    }
+                  }
+                },
+                "enableStaging": false,
+                "translator": {
+                  "type": "TabularTranslator",
+                  "typeConversion": true,
+                  "typeConversionSettings": {
+                    "allowDataTruncation": false,
+                    "treatBooleanAsNumber": false
+                  }
+                }
+              },
+              "description": "Copies only rows within the frozen watermark window and adds source, run, arrival-time, and batch lineage columns."
+            },
+            {
+              "name": "ValidateBatchAndWriteManifest",
+              "type": "TridentNotebook",
+              "dependsOn": [
+                {
+                  "activity": "CopyBoundedRowsToBronze",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ],
+              "policy": {
+                "timeout": "0.02:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "notebookId": "c58fda4b-7307-4472-9363-d97aa25e1fea",
+                "workspaceId": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
+                "parameters": {
+                  "operation": {
+                    "value": "validate_and_manifest",
+                    "type": "string"
+                  },
+                  "bronze_target": {
+                    "value": "@activity('PrepareControlledBatch').output.resultSets[0].rows[0].bronze_target_name",
+                    "type": "string"
+                  },
+                  "ingestion_batch_id": {
+                    "value": "@activity('PrepareControlledBatch').output.resultSets[0].rows[0].ingestion_batch_id",
+                    "type": "string"
+                  },
+                  "source_object_id": {
+                    "value": "@pipeline().parameters.source_object_id",
+                    "type": "string"
+                  },
+                  "source_object_name": {
+                    "value": "@concat(pipeline().parameters.source_schema, '.', pipeline().parameters.source_table)",
+                    "type": "string"
+                  },
+                  "pipeline_run_id": {
+                    "value": "@pipeline().RunId",
+                    "type": "string"
+                  },
+                  "lower_watermark": {
+                    "value": "@activity('PrepareControlledBatch').output.resultSets[0].rows[0].lower_watermark",
+                    "type": "string"
+                  },
+                  "upper_watermark": {
+                    "value": "@activity('PrepareControlledBatch').output.resultSets[0].rows[0].upper_watermark",
+                    "type": "string"
+                  },
+                  "lower_tie_breaker": {
+                    "value": "@activity('PrepareControlledBatch').output.resultSets[0].rows[0].lower_tie_breaker",
+                    "type": "string"
+                  },
+                  "upper_tie_breaker": {
+                    "value": "@activity('PrepareControlledBatch').output.resultSets[0].rows[0].upper_tie_breaker",
+                    "type": "string"
+                  },
+                  "rows_expected": {
+                    "value": "@string(activity('CountBoundedSourceRows').output.firstRow.rows_expected)",
+                    "type": "string"
+                  },
+                  "manifest_relative_path": {
+                    "value": "@activity('PrepareControlledBatch').output.resultSets[0].rows[0].manifest_path",
+                    "type": "string"
+                  }
+                },
+                "sessionTag": {
+                  "value": "@concat('bronze-', pipeline().parameters.source_object_id)",
+                  "type": "Expression"
+                }
+              },
+              "description": "Compares Bronze batch rows with the expected source count and writes immutable manifest evidence before checkpoint advancement."
+            },
+            {
+              "name": "CommitCheckpoint",
+              "type": "Script",
+              "dependsOn": [
+                {
+                  "activity": "ValidateBatchAndWriteManifest",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ],
+              "policy": {
+                "timeout": "0.00:05:00",
+                "retry": 1,
+                "retryIntervalInSeconds": 30,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "scripts": [
+                  {
+                    "type": "Query",
+                    "text": {
+                      "value": "@concat('EXEC control.sp_commit_bronze_watermark_run @pipeline_run_id = ''', pipeline().RunId, ''', @source_object_id = ', pipeline().parameters.source_object_id, ', @ingestion_batch_id = ''', activity('PrepareControlledBatch').output.resultSets[0].rows[0].ingestion_batch_id, ''', @rows_landed = ', activity('CountBoundedSourceRows').output.firstRow.rows_expected, ', @manifest_written = 1;')",
+                      "type": "Expression"
+                    }
+                  }
+                ],
+                "scriptBlockExecutionTimeout": "00:02:00"
+              },
+              "externalReferences": {
+                "connection": "ffb74af9-9d17-4429-8493-02465e631244"
+              },
+              "description": "Commits the upper watermark and releases the object lock only after copy validation and manifest creation succeed."
+            },
+            {
+              "name": "FailAfterCountBoundedSourceRows",
+              "type": "Script",
+              "dependsOn": [
+                {
+                  "activity": "CountBoundedSourceRows",
+                  "dependencyConditions": [
+                    "Failed"
+                  ]
+                }
+              ],
+              "policy": {
+                "timeout": "0.00:05:00",
+                "retry": 1,
+                "retryIntervalInSeconds": 30,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "scripts": [
+                  {
+                    "type": "Query",
+                    "text": {
+                      "value": "@concat('EXEC control.sp_fail_bronze_watermark_run @pipeline_run_id = ''', pipeline().RunId, ''', @source_object_id = ', pipeline().parameters.source_object_id, ', @ingestion_batch_id = ''', activity('PrepareControlledBatch').output.resultSets[0].rows[0].ingestion_batch_id, ''', @error_category = ''source_count'', @error_message = ''Activity CountBoundedSourceRows failed. Review Fabric run diagnostics.'';')",
+                      "type": "Expression"
+                    }
+                  }
+                ],
+                "scriptBlockExecutionTimeout": "00:02:00"
+              },
+              "externalReferences": {
+                "connection": "ffb74af9-9d17-4429-8493-02465e631244"
+              },
+              "description": "Records the failure after source counting and releases the object lease without advancing the checkpoint."
+            },
+            {
+              "name": "FailAfterRegisterExpectedRows",
+              "type": "Script",
+              "dependsOn": [
+                {
+                  "activity": "RegisterExpectedRows",
+                  "dependencyConditions": [
+                    "Failed"
+                  ]
+                }
+              ],
+              "policy": {
+                "timeout": "0.00:05:00",
+                "retry": 1,
+                "retryIntervalInSeconds": 30,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "scripts": [
+                  {
+                    "type": "Query",
+                    "text": {
+                      "value": "@concat('EXEC control.sp_fail_bronze_watermark_run @pipeline_run_id = ''', pipeline().RunId, ''', @source_object_id = ', pipeline().parameters.source_object_id, ', @ingestion_batch_id = ''', activity('PrepareControlledBatch').output.resultSets[0].rows[0].ingestion_batch_id, ''', @error_category = ''control_expected_rows'', @error_message = ''Activity RegisterExpectedRows failed. Review Fabric run diagnostics.'';')",
+                      "type": "Expression"
+                    }
+                  }
+                ],
+                "scriptBlockExecutionTimeout": "00:02:00"
+              },
+              "externalReferences": {
+                "connection": "ffb74af9-9d17-4429-8493-02465e631244"
+              },
+              "description": "Records the failure after expected-count registration and releases the object lease without advancing the checkpoint."
+            },
+            {
+              "name": "FailAfterResetStagedBatchForReplay",
+              "type": "Script",
+              "dependsOn": [
+                {
+                  "activity": "ResetStagedBatchForReplay",
+                  "dependencyConditions": [
+                    "Failed"
+                  ]
+                }
+              ],
+              "policy": {
+                "timeout": "0.00:05:00",
+                "retry": 1,
+                "retryIntervalInSeconds": 30,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "scripts": [
+                  {
+                    "type": "Query",
+                    "text": {
+                      "value": "@concat('EXEC control.sp_fail_bronze_watermark_run @pipeline_run_id = ''', pipeline().RunId, ''', @source_object_id = ', pipeline().parameters.source_object_id, ', @ingestion_batch_id = ''', activity('PrepareControlledBatch').output.resultSets[0].rows[0].ingestion_batch_id, ''', @error_category = ''replay_reset'', @error_message = ''Activity ResetStagedBatchForReplay failed. Review Fabric run diagnostics.'';')",
+                      "type": "Expression"
+                    }
+                  }
+                ],
+                "scriptBlockExecutionTimeout": "00:02:00"
+              },
+              "externalReferences": {
+                "connection": "ffb74af9-9d17-4429-8493-02465e631244"
+              },
+              "description": "Records the failure after replay cleanup and leaves the prior committed watermark unchanged."
+            },
+            {
+              "name": "FailAfterCopyBoundedRowsToBronze",
+              "type": "Script",
+              "dependsOn": [
+                {
+                  "activity": "CopyBoundedRowsToBronze",
+                  "dependencyConditions": [
+                    "Failed"
+                  ]
+                }
+              ],
+              "policy": {
+                "timeout": "0.00:05:00",
+                "retry": 1,
+                "retryIntervalInSeconds": 30,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "scripts": [
+                  {
+                    "type": "Query",
+                    "text": {
+                      "value": "@concat('EXEC control.sp_fail_bronze_watermark_run @pipeline_run_id = ''', pipeline().RunId, ''', @source_object_id = ', pipeline().parameters.source_object_id, ', @ingestion_batch_id = ''', activity('PrepareControlledBatch').output.resultSets[0].rows[0].ingestion_batch_id, ''', @error_category = ''bronze_copy'', @error_message = ''Activity CopyBoundedRowsToBronze failed. Review Fabric run diagnostics.'';')",
+                      "type": "Expression"
+                    }
+                  }
+                ],
+                "scriptBlockExecutionTimeout": "00:02:00"
+              },
+              "externalReferences": {
+                "connection": "ffb74af9-9d17-4429-8493-02465e631244"
+              },
+              "description": "Records the failed copy and preserves the prior checkpoint so the deterministic batch can be retried safely."
+            },
+            {
+              "name": "FailAfterValidateBatchAndWriteManifest",
+              "type": "Script",
+              "dependsOn": [
+                {
+                  "activity": "ValidateBatchAndWriteManifest",
+                  "dependencyConditions": [
+                    "Failed"
+                  ]
+                }
+              ],
+              "policy": {
+                "timeout": "0.00:05:00",
+                "retry": 1,
+                "retryIntervalInSeconds": 30,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "scripts": [
+                  {
+                    "type": "Query",
+                    "text": {
+                      "value": "@concat('EXEC control.sp_fail_bronze_watermark_run @pipeline_run_id = ''', pipeline().RunId, ''', @source_object_id = ', pipeline().parameters.source_object_id, ', @ingestion_batch_id = ''', activity('PrepareControlledBatch').output.resultSets[0].rows[0].ingestion_batch_id, ''', @error_category = ''bronze_validation'', @error_message = ''Activity ValidateBatchAndWriteManifest failed. Review Fabric run diagnostics.'';')",
+                      "type": "Expression"
+                    }
+                  }
+                ],
+                "scriptBlockExecutionTimeout": "00:02:00"
+              },
+              "externalReferences": {
+                "connection": "ffb74af9-9d17-4429-8493-02465e631244"
+              },
+              "description": "Records validation/manifest failure and prevents the pipeline from committing the upper watermark."
+            },
+            {
+              "name": "FailAfterCommitCheckpoint",
+              "type": "Script",
+              "dependsOn": [
+                {
+                  "activity": "CommitCheckpoint",
+                  "dependencyConditions": [
+                    "Failed"
+                  ]
+                }
+              ],
+              "policy": {
+                "timeout": "0.00:05:00",
+                "retry": 1,
+                "retryIntervalInSeconds": 30,
+                "secureOutput": false,
+                "secureInput": false
+              },
+              "typeProperties": {
+                "scripts": [
+                  {
+                    "type": "Query",
+                    "text": {
+                      "value": "@concat('EXEC control.sp_fail_bronze_watermark_run @pipeline_run_id = ''', pipeline().RunId, ''', @source_object_id = ', pipeline().parameters.source_object_id, ', @ingestion_batch_id = ''', activity('PrepareControlledBatch').output.resultSets[0].rows[0].ingestion_batch_id, ''', @error_category = ''checkpoint_commit'', @error_message = ''Activity CommitCheckpoint failed. Review Fabric run diagnostics.'';')",
+                      "type": "Expression"
+                    }
+                  }
+                ],
+                "scriptBlockExecutionTimeout": "00:02:00"
+              },
+              "externalReferences": {
+                "connection": "ffb74af9-9d17-4429-8493-02465e631244"
+              },
+              "description": "Records a checkpoint-commit activity failure for operator investigation; inspect control state before retrying."
+            }
+          ],
+          "ifFalseActivities": []
+        },
+        "description": "Skips a no-change interval or executes count, replay reset, copy, validation, manifest, and checkpoint commit in order."
+      }
+    ]
+  }
+}

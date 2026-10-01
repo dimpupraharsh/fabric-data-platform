@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "nb_silver_events",
+    "description": "Conforms order, shipment, and payment events while preserving business event time and Bronze arrival time; merges on immutable source event keys."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "45fa2f38-3b1b-4402-99dd-e7e9d32a4310"
+  }
+}

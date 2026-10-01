@@ -1,0 +1,191 @@
+table dim_location
+	lineageTag: 8ea1d2cf-6fb7-467a-a1f9-10529a3d54f9
+	sourceLineageTag: [gold].[dim_location]
+
+	column location_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 009964a0-8a49-4c38-ad9d-d789612de3a7
+		sourceLineageTag: location_key
+		summarizeBy: sum
+		sourceColumn: location_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column location_entity_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 1a8aacb9-eb58-4d71-b8bd-2c2f2cec53e7
+		sourceLineageTag: location_entity_key
+		summarizeBy: sum
+		sourceColumn: location_entity_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column country
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: f54b4834-d853-4f49-9262-2e29ad024737
+		sourceLineageTag: country
+		summarizeBy: none
+		sourceColumn: country
+
+		annotation SummarizationSetBy = Automatic
+
+	column region
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: 80bb037f-8792-4c0d-97bb-268be510a5cf
+		sourceLineageTag: region
+		summarizeBy: none
+		sourceColumn: region
+
+		annotation SummarizationSetBy = Automatic
+
+	column subregion
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: 658a9fd6-1b37-4452-81ab-1eff569e0b1a
+		sourceLineageTag: subregion
+		summarizeBy: none
+		sourceColumn: subregion
+
+		annotation SummarizationSetBy = Automatic
+
+	column state_province
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: b5301ffa-1407-4058-a102-dd219a85570e
+		sourceLineageTag: state_province
+		summarizeBy: none
+		sourceColumn: state_province
+
+		annotation SummarizationSetBy = Automatic
+
+	column city
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: 14ba7824-254a-4a79-ba5c-2b1f24a6f018
+		sourceLineageTag: city
+		summarizeBy: none
+		sourceColumn: city
+
+		annotation SummarizationSetBy = Automatic
+
+	column postal_code
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: f72f57ba-7e27-47f2-94b1-c959790654ce
+		sourceLineageTag: postal_code
+		summarizeBy: none
+		sourceColumn: postal_code
+
+		annotation SummarizationSetBy = Automatic
+
+	column market
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: d390b293-0dff-4421-9ab5-4e16c2b54ee0
+		sourceLineageTag: market
+		summarizeBy: none
+		sourceColumn: market
+
+		annotation SummarizationSetBy = Automatic
+
+	column sales_territory
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: 94cfe96d-d7df-4012-8636-14fcb8916ad8
+		sourceLineageTag: sales_territory
+		summarizeBy: none
+		sourceColumn: sales_territory
+
+		annotation SummarizationSetBy = Automatic
+
+	column delivery_zone
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: 4da68da4-703e-4faf-b545-4217fcadc12c
+		sourceLineageTag: delivery_zone
+		summarizeBy: none
+		sourceColumn: delivery_zone
+
+		annotation SummarizationSetBy = Automatic
+
+	column standard_sla_days
+		dataType: int64
+		formatString: 0
+		sourceProviderType: int
+		lineageTag: 445bb36d-75ae-4385-bb88-87a0aabf09fb
+		sourceLineageTag: standard_sla_days
+		summarizeBy: sum
+		sourceColumn: standard_sla_days
+
+		annotation SummarizationSetBy = Automatic
+
+	column serviceability_flag
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		sourceProviderType: bit
+		lineageTag: 57bc7926-d671-4b27-b0b8-6add9f660030
+		sourceLineageTag: serviceability_flag
+		summarizeBy: none
+		sourceColumn: serviceability_flag
+
+		annotation SummarizationSetBy = Automatic
+
+	column dwh_effective_from
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: datetime2
+		lineageTag: b6f8a730-4558-43b4-a0eb-10aae430ab85
+		sourceLineageTag: dwh_effective_from
+		summarizeBy: none
+		sourceColumn: dwh_effective_from
+
+		annotation SummarizationSetBy = Automatic
+
+	column dwh_effective_to
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: datetime2
+		lineageTag: 416b3804-5c35-4e19-9125-3cdfcc28c01b
+		sourceLineageTag: dwh_effective_to
+		summarizeBy: none
+		sourceColumn: dwh_effective_to
+
+		annotation SummarizationSetBy = Automatic
+
+	column dwh_is_current
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		sourceProviderType: bit
+		lineageTag: c6e7d817-f340-4da9-8fce-433041802d02
+		sourceLineageTag: dwh_is_current
+		summarizeBy: none
+		sourceColumn: dwh_is_current
+
+		annotation SummarizationSetBy = Automatic
+
+	column dwh_is_inferred
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		sourceProviderType: bit
+		lineageTag: 39e6139f-96f0-419d-85c5-5e9fcd3796fb
+		sourceLineageTag: dwh_is_inferred
+		summarizeBy: none
+		sourceColumn: dwh_is_inferred
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_location = entity
+		mode: directLake
+		source
+			entityName: dim_location
+			schemaName: gold
+			expressionSource: DatabaseQuery
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,150 @@
+{
+  "source_workspace_id": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
+  "capacity_id": "de3ffb58-5588-4ac9-9723-706175803576",
+  "items": [
+    {
+      "name": "sm_retail_order_intelligence",
+      "type": "SemanticModel",
+      "source_id": "fb836d66-97d2-4ba6-a084-c0ddef57159a",
+      "logical_id": "fb836d66-97d2-4ba6-a084-c0ddef57159a"
+    },
+    {
+      "name": "wh_retail_gold",
+      "type": "Warehouse",
+      "source_id": "95a23529-d4a8-42cc-8785-8a7d36fe4ac1",
+      "logical_id": "95a23529-d4a8-42cc-8785-8a7d36fe4ac1"
+    },
+    {
+      "name": "wh_retail_control",
+      "type": "Warehouse",
+      "source_id": "c8dbe07a-2181-4c0c-bec9-b7719017bb9f",
+      "logical_id": "c8dbe07a-2181-4c0c-bec9-b7719017bb9f"
+    },
+    {
+      "name": "lh_retail_bronze",
+      "type": "Lakehouse",
+      "source_id": "ed2e34f8-b837-43c6-b6ba-de68cd7e0079",
+      "logical_id": "ed2e34f8-b837-43c6-b6ba-de68cd7e0079"
+    },
+    {
+      "name": "lh_retail_silver",
+      "type": "Lakehouse",
+      "source_id": "008a8245-d6ca-42fb-bd45-17e1dfef0835",
+      "logical_id": "008a8245-d6ca-42fb-bd45-17e1dfef0835"
+    },
+    {
+      "name": "pl_bronze_pg_full_refresh",
+      "type": "DataPipeline",
+      "source_id": "474b2a0d-90c1-4892-b1f8-532482336bf5",
+      "logical_id": "474b2a0d-90c1-4892-b1f8-532482336bf5"
+    },
+    {
+      "name": "pl_bronze_pg_watermark",
+      "type": "DataPipeline",
+      "source_id": "d3adcc89-45e2-417b-8af6-b39cde4c4893",
+      "logical_id": "d3adcc89-45e2-417b-8af6-b39cde4c4893"
+    },
+    {
+      "name": "pl_bronze_orchestrator",
+      "type": "DataPipeline",
+      "source_id": "356f985f-4bfd-4e4a-a994-9279e21bebce",
+      "logical_id": "356f985f-4bfd-4e4a-a994-9279e21bebce"
+    },
+    {
+      "name": "pl_bronze_s3_snapshot",
+      "type": "DataPipeline",
+      "source_id": "03588d93-cfc8-4121-ac7b-72a846bb8147",
+      "logical_id": "03588d93-cfc8-4121-ac7b-72a846bb8147"
+    },
+    {
+      "name": "pl_bronze_pg_partition_append",
+      "type": "DataPipeline",
+      "source_id": "be2e54f2-531c-4c3f-8cdd-71db6456c5f5",
+      "logical_id": "be2e54f2-531c-4c3f-8cdd-71db6456c5f5"
+    },
+    {
+      "name": "pl_bronze_pg_partition_overwrite",
+      "type": "DataPipeline",
+      "source_id": "392caa98-d9c2-4cfd-9199-c081c60790c5",
+      "logical_id": "392caa98-d9c2-4cfd-9199-c081c60790c5"
+    },
+    {
+      "name": "nb_bronze_batch_guard",
+      "type": "Notebook",
+      "source_id": "c58fda4b-7307-4472-9363-d97aa25e1fea",
+      "logical_id": "c58fda4b-7307-4472-9363-d97aa25e1fea"
+    },
+    {
+      "name": "pl_bronze_pg_incremental_all",
+      "type": "DataPipeline",
+      "source_id": "6c82e015-9bc9-4b3c-9a1d-618d7b40959b",
+      "logical_id": "6c82e015-9bc9-4b3c-9a1d-618d7b40959b"
+    },
+    {
+      "name": "nb_silver_dimensions",
+      "type": "Notebook",
+      "source_id": "baff3993-17eb-4514-9ae3-fc3a6d586083",
+      "logical_id": "baff3993-17eb-4514-9ae3-fc3a6d586083"
+    },
+    {
+      "name": "nb_silver_sales",
+      "type": "Notebook",
+      "source_id": "6abffcba-c1f6-41ff-8919-d32398ab0c83",
+      "logical_id": "6abffcba-c1f6-41ff-8919-d32398ab0c83"
+    },
+    {
+      "name": "nb_silver_events",
+      "type": "Notebook",
+      "source_id": "45fa2f38-3b1b-4402-99dd-e7e9d32a4310",
+      "logical_id": "45fa2f38-3b1b-4402-99dd-e7e9d32a4310"
+    },
+    {
+      "name": "nb_silver_reconciliation",
+      "type": "Notebook",
+      "source_id": "5c493da3-0ada-42a0-800b-883c03d68740",
+      "logical_id": "5c493da3-0ada-42a0-800b-883c03d68740"
+    },
+    {
+      "name": "pl_silver_orchestrator",
+      "type": "DataPipeline",
+      "source_id": "54dabacf-ac3b-4298-84df-bec5fe8fd82f",
+      "logical_id": "54dabacf-ac3b-4298-84df-bec5fe8fd82f"
+    },
+    {
+      "name": "nb_bronze_prepare_snapshot_target",
+      "type": "Notebook",
+      "source_id": "e8453a82-24a9-4bf5-9fa2-82faaef77da6",
+      "logical_id": "e8453a82-24a9-4bf5-9fa2-82faaef77da6"
+    },
+    {
+      "name": "pl_daily_retail_processing",
+      "type": "DataPipeline",
+      "source_id": "d766168e-27d3-4135-91ea-41b3554c3e1a",
+      "logical_id": "d766168e-27d3-4135-91ea-41b3554c3e1a"
+    },
+    {
+      "name": "nb_silver_order_header",
+      "type": "Notebook",
+      "source_id": "2cc8ba3a-17d3-4fd3-a760-91fd15119995",
+      "logical_id": "2cc8ba3a-17d3-4fd3-a760-91fd15119995"
+    },
+    {
+      "name": "pl_bronze_pg_order_header",
+      "type": "DataPipeline",
+      "source_id": "373eb164-7433-4409-b385-d3f672c851f6",
+      "logical_id": "373eb164-7433-4409-b385-d3f672c851f6"
+    },
+    {
+      "name": "pl_gold_orchestrator",
+      "type": "DataPipeline",
+      "source_id": "bc238ab9-2ca8-4754-b8dc-e2e2050b7e1a",
+      "logical_id": "bc238ab9-2ca8-4754-b8dc-e2e2050b7e1a"
+    },
+    {
+      "name": "nb_gold_serving_health",
+      "type": "Notebook",
+      "source_id": "2305d7d9-966a-4799-8dd9-29a32381b98b",
+      "logical_id": "2305d7d9-966a-4799-8dd9-29a32381b98b"
+    }
+  ]
+}

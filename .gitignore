@@ -1,0 +1,23 @@
+# Definitions and code only. Never commit business data, tokens, or Terraform state.
+.env*
+!.env.example
+secrets
+secrets.*
+*.pem
+*.pfx
+*.key
+*.tfstate*
+*.tfplan
+*.tfvars
+!*.tfvars.example
+.terraform/
+.venv*/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
+build/
+artifacts/
+.schedules
+fabric_cicd.error.log
+fabric_cicd.debug.log

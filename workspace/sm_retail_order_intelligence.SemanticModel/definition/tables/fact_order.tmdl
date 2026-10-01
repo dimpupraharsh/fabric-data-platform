@@ -1,0 +1,333 @@
+/// One row per order, anchored to the source order header and reconciled to its sales lines.
+table fact_order
+	lineageTag: 1ca99756-79d3-432b-824f-d9a28eb2719d
+	sourceLineageTag: [gold].[fact_order]
+
+	/// Orders passing the Gold order-identity and date eligibility rules.
+	measure 'Eligible Orders' = CALCULATE(COUNTROWS('fact_order'), 'fact_order'[is_order_metric_eligible] = TRUE())
+		formatString: #,0
+
+	/// Sum of booked line revenue assigned to eligible orders.
+	measure 'Eligible Order Gross Booked Sales' = CALCULATE(SUM('fact_order'[gross_booked_sales_amount]), 'fact_order'[is_order_metric_eligible] = TRUE())
+		formatString: #,0.00
+
+	/// Eligible booked revenue divided by eligible distinct orders.
+	measure 'Average Order Value' = DIVIDE([Eligible Order Gross Booked Sales], [Eligible Orders])
+		formatString: #,0.00
+
+	/// Eligible orders whose latest status is cancelled.
+	measure 'Cancelled Orders' = CALCULATE([Eligible Orders], 'fact_order'[order_status] = "cancelled")
+		formatString: #,0
+
+	/// Current cancelled-order share among eligible orders; not a cohort conversion rate.
+	measure 'Cancellation Rate' = DIVIDE([Cancelled Orders], [Eligible Orders])
+		formatString: 0.0%;-0.0%;0.0%
+
+	/// Eligible orders whose latest status is returned.
+	measure 'Returned Orders' = CALCULATE([Eligible Orders], 'fact_order'[order_status] = "returned")
+		formatString: #,0
+
+	/// Current returned-order share among eligible orders.
+	measure 'Return Rate' = DIVIDE([Returned Orders], [Eligible Orders])
+		formatString: 0.0%;-0.0%;0.0%
+
+	/// Eligible orders with a valid due date and delivery timestamp for SLA evaluation.
+	measure 'SLA Eligible Deliveries' = CALCULATE([Eligible Orders], 'fact_order'[is_shipping_sla_eligible] = TRUE())
+		formatString: #,0
+
+	/// SLA-eligible orders delivered on or before their due date.
+	measure 'On-Time Deliveries' = CALCULATE([SLA Eligible Deliveries], FILTER('fact_order', INT('fact_order'[delivered_ts]) <= 'fact_order'[due_date]))
+		formatString: #,0
+
+	/// On-time deliveries divided by SLA-eligible deliveries.
+	measure 'On-Time Delivery Rate' = DIVIDE([On-Time Deliveries], [SLA Eligible Deliveries])
+		formatString: 0.0%;-0.0%;0.0%
+
+	/// Eligible orders whose latest payment status is paid.
+	measure 'Paid Orders' = CALCULATE([Eligible Orders], 'fact_order'[payment_status] = "paid")
+		formatString: #,0
+
+	/// Latest paid-status share of eligible orders; not a payment-attempt conversion rate.
+	measure 'Paid Order Share' = DIVIDE([Paid Orders], [Eligible Orders])
+		formatString: 0.0%;-0.0%;0.0%
+
+	column order_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 603132ff-0809-46c3-9cf6-2a3fabded8b8
+		sourceLineageTag: order_key
+		summarizeBy: sum
+		sourceColumn: order_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column order_number
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: 21afb08e-41ff-45cd-85df-31a5b7046738
+		sourceLineageTag: order_number
+		summarizeBy: none
+		sourceColumn: order_number
+
+		annotation SummarizationSetBy = Automatic
+
+	column anchor_sales_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 96e386ca-c1b8-4368-9a81-67ba39f54ca5
+		sourceLineageTag: anchor_sales_key
+		summarizeBy: sum
+		sourceColumn: anchor_sales_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column customer_id
+		dataType: int64
+		formatString: 0
+		sourceProviderType: int
+		lineageTag: b7f8192a-cf02-4466-999c-304962cbb987
+		sourceLineageTag: customer_id
+		summarizeBy: sum
+		sourceColumn: customer_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column customer_entity_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: d0e753c2-1830-42d2-8099-0c088707e407
+		sourceLineageTag: customer_entity_key
+		summarizeBy: sum
+		sourceColumn: customer_entity_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column location_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 72075e2f-3e91-4617-8159-9ceb3cf8007a
+		sourceLineageTag: location_key
+		summarizeBy: sum
+		sourceColumn: location_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column order_date
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: date
+		lineageTag: 9e4f3b28-8a5d-4af7-9017-737b5ec7645d
+		sourceLineageTag: order_date
+		summarizeBy: none
+		sourceColumn: order_date
+
+		annotation SummarizationSetBy = Automatic
+
+	column ship_date
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: date
+		lineageTag: a4a2af6f-5251-4607-bdf0-dd2c6279d3e3
+		sourceLineageTag: ship_date
+		summarizeBy: none
+		sourceColumn: ship_date
+
+		annotation SummarizationSetBy = Automatic
+
+	column due_date
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: date
+		lineageTag: 7b1420b2-1455-427f-b0c9-5800ed1a6496
+		sourceLineageTag: due_date
+		summarizeBy: none
+		sourceColumn: due_date
+
+		annotation SummarizationSetBy = Automatic
+
+	column delivered_ts
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: datetime2
+		lineageTag: 369dc657-8fcd-4975-acf7-3e03cebb3a90
+		sourceLineageTag: delivered_ts
+		summarizeBy: none
+		sourceColumn: delivered_ts
+
+		annotation SummarizationSetBy = Automatic
+
+	column payment_ts
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: datetime2
+		lineageTag: fff5de2a-2e30-43c5-91ff-18e100ec1491
+		sourceLineageTag: payment_ts
+		summarizeBy: none
+		sourceColumn: payment_ts
+
+		annotation SummarizationSetBy = Automatic
+
+	column order_status
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: 41ee710d-3d05-4563-817e-3bb7bcd1cd9f
+		sourceLineageTag: order_status
+		summarizeBy: none
+		sourceColumn: order_status
+
+		annotation SummarizationSetBy = Automatic
+
+	column shipment_status
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: db4d6c51-2546-4337-931a-12af9d999787
+		sourceLineageTag: shipment_status
+		summarizeBy: none
+		sourceColumn: shipment_status
+
+		annotation SummarizationSetBy = Automatic
+
+	column payment_status
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: 4162560c-e05e-4ad1-93ba-fb61d2bcf79f
+		sourceLineageTag: payment_status
+		summarizeBy: none
+		sourceColumn: payment_status
+
+		annotation SummarizationSetBy = Automatic
+
+	column status_updated_ts
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: datetime2
+		lineageTag: ad93c3ea-c699-4ae6-aadc-5071016704b8
+		sourceLineageTag: status_updated_ts
+		summarizeBy: none
+		sourceColumn: status_updated_ts
+
+		annotation SummarizationSetBy = Automatic
+
+	column sales_line_count
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 04a7646c-ee3c-4faf-a906-ca0729f9879d
+		sourceLineageTag: sales_line_count
+		summarizeBy: sum
+		sourceColumn: sales_line_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column eligible_sales_line_count
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 9b164435-aa0c-4cb2-9420-2921f3656555
+		sourceLineageTag: eligible_sales_line_count
+		summarizeBy: sum
+		sourceColumn: eligible_sales_line_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column identity_mismatch_line_count
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: d21dff31-d9c5-43ef-9a81-432b78c70fb0
+		sourceLineageTag: identity_mismatch_line_count
+		summarizeBy: sum
+		sourceColumn: identity_mismatch_line_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column gross_booked_sales_amount
+		dataType: double
+		sourceProviderType: decimal(38, 2)
+		lineageTag: 708dd88f-9996-4c83-bc46-27c488dcd178
+		sourceLineageTag: gross_booked_sales_amount
+		summarizeBy: sum
+		sourceColumn: gross_booked_sales_amount
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column units_sold
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: ae097af1-3d93-4852-b66b-cebf57c566f6
+		sourceLineageTag: units_sold
+		summarizeBy: sum
+		sourceColumn: units_sold
+
+		annotation SummarizationSetBy = Automatic
+
+	column is_order_metric_eligible
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		sourceProviderType: bit
+		lineageTag: 81bba76d-9650-4bda-8a96-07ecd9a6295f
+		sourceLineageTag: is_order_metric_eligible
+		summarizeBy: none
+		sourceColumn: is_order_metric_eligible
+
+		annotation SummarizationSetBy = Automatic
+
+	column is_shipping_sla_eligible
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		sourceProviderType: bit
+		lineageTag: a8ab7266-6a30-407e-b89a-275195384fe0
+		sourceLineageTag: is_shipping_sla_eligible
+		summarizeBy: none
+		sourceColumn: is_shipping_sla_eligible
+
+		annotation SummarizationSetBy = Automatic
+
+	column dwh_source_load_ts
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: datetime2
+		lineageTag: b1272de3-d7fc-444d-8028-a7e15791fca3
+		sourceLineageTag: dwh_source_load_ts
+		summarizeBy: none
+		sourceColumn: dwh_source_load_ts
+
+		annotation SummarizationSetBy = Automatic
+
+	column dwh_silver_load_ts
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: datetime2
+		lineageTag: c85f03e4-679f-4279-8631-3ad9276a1717
+		sourceLineageTag: dwh_silver_load_ts
+		summarizeBy: none
+		sourceColumn: dwh_silver_load_ts
+
+		annotation SummarizationSetBy = Automatic
+
+	column dwh_record_hash
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: d2d09493-7c04-41cd-86ef-0529cfff4248
+		sourceLineageTag: dwh_record_hash
+		summarizeBy: none
+		sourceColumn: dwh_record_hash
+
+		annotation SummarizationSetBy = Automatic
+
+	partition fact_order = entity
+		mode: directLake
+		source
+			entityName: fact_order
+			schemaName: gold
+			expressionSource: DatabaseQuery
+
+	annotation PBI_ResultType = Table
+

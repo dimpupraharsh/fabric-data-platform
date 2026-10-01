@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "pl_daily_retail_processing",
+    "description": "Daily PostgreSQL Bronze, incremental Silver, audited Gold publication, and a logged semantic-serving health gate. S3 reference snapshots refresh separately."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "d766168e-27d3-4135-91ea-41b3554c3e1a"
+  }
+}

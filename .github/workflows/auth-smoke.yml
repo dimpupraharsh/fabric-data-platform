@@ -1,0 +1,37 @@
+name: OIDC Readiness
+on:
+  push:
+    branches: [setup/enterprise-fabric-cicd]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: oidc-readiness
+  cancel-in-progress: false
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [dev, test, production]
+    environment: ${{ matrix.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - uses: azure/login@8216e11d8cd9b42fe925c852af8e76311ff067ac # v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+      - name: Read-only Fabric and Warehouse smoke test
+        run: python deploy/smoke.py --environment '${{ matrix.environment }}'

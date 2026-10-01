@@ -1,0 +1,36 @@
+relationship sales_to_order_date
+	fromColumn: fact_sales.order_date
+	toColumn: dim_date.calendar_date
+
+relationship orders_to_order_date
+	fromColumn: fact_order.order_date
+	toColumn: dim_date.calendar_date
+
+relationship sales_to_customer_history
+	fromColumn: fact_sales.customer_key
+	toColumn: dim_customer.customer_key
+
+relationship sales_to_current_customer
+	fromColumn: fact_sales.customer_entity_key
+	toColumn: dim_customer_current.customer_entity_key
+
+relationship orders_to_current_customer
+	fromColumn: fact_order.customer_entity_key
+	toColumn: dim_customer_current.customer_entity_key
+
+relationship sales_to_product_history
+	fromColumn: fact_sales.product_key
+	toColumn: dim_product.product_key
+
+relationship sales_to_category
+	fromColumn: fact_sales.category_key
+	toColumn: dim_category.category_key
+
+relationship sales_to_location_history
+	fromColumn: fact_sales.location_key
+	toColumn: dim_location.location_key
+
+relationship orders_to_location_history
+	fromColumn: fact_order.location_key
+	toColumn: dim_location.location_key
+

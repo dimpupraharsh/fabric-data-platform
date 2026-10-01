@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "pl_bronze_pg_incremental_all",
+    "description": "Runs the four PostgreSQL fact/event objects serially through the metadata parent. Each object gets its own lock, bounded watermark, batch manifest, and commit record; serial execution protects gateway and source capacity."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "6c82e015-9bc9-4b3c-9a1d-618d7b40959b"
+  }
+}
