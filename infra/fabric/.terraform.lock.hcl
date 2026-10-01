@@ -6,6 +6,7 @@ provider "registry.terraform.io/microsoft/fabric" {
   constraints = "1.14.0"
   hashes = [
     "h1:XH8b1yuIfd3FAUj76C3T2U3fOJwhqyYkyvHYu/IS/jE=",
+    "h1:gnA6XOB4XkWj8/dJYr5h7wMacxLqkYso86EUbuCtaa8=",
     "zh:0ea15cd75fa54717463661a565b7bad0f63c0c1ecb0f08ced32c0da69058a76c",
     "zh:341ab5879a64f5eb88dd03a1463a1b28e19086376fc640eca2e2577b8500609c",
     "zh:3efda5dc1fe19c617c23c6c04d837b3ecd6972e1d465a6d07286e1249210418f",

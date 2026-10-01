@@ -47,4 +47,6 @@ jobs:
           python deploy/release.py --environment '${{ inputs.environment }}' --stage semantic --execute
           python deploy/release.py --environment '${{ inputs.environment }}' --stage application --execute
       - name: Verify deployment and environment isolation
-        run: python deploy/smoke.py --environment '${{ inputs.environment }}' --application
+        run: |
+          python deploy/verify_bindings.py --environment '${{ inputs.environment }}'
+          python deploy/smoke.py --environment '${{ inputs.environment }}' --application

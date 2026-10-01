@@ -16,6 +16,8 @@ data "azuread_client_config" "operator" {}
 
 locals {
   environments = toset(["dev", "test", "production"])
+  # GitHub immutable subject format: verified against the repository OIDC API.
+  github_subject_prefix = "repo:dimpupraharsh@148876828/fabric-data-platform@1394039561"
 }
 
 resource "azuread_application" "deployment" {
@@ -43,7 +45,7 @@ resource "azuread_application_federated_identity_credential" "github" {
   description    = "Only this repository's protected environment can request deployment tokens."
   audiences      = ["api://AzureADTokenExchange"]
   issuer         = "https://token.actions.githubusercontent.com"
-  subject        = "repo:dimpupraharsh/fabric-data-platform:environment:${each.key}"
+  subject        = "${local.github_subject_prefix}:environment:${each.key}"
 }
 
 output "deployment_principals" {

@@ -3,11 +3,20 @@
     "workspace_id": "9dbe1dca-7893-45ea-bb87-e22e4225bc42",
     "client_id": "cf499cfd-b990-46d1-8e1b-6a708f64836e",
     "tenant_id": "cf22b271-7261-4a07-9b4f-a04dde6ba1b1",
-    "connections": {},
+    "connections": {
+      "ffb74af9-9d17-4429-8493-02465e631244": "10e3aa56-c54e-4bda-84e1-5ab3c09d5c39",
+      "0a85b5ac-b0d0-4686-9de2-c3bf62dac800": "92895f3e-2e18-4abd-8805-16b3ad961e5c",
+      "e3607aae-ab0a-4954-968c-613ebd192eeb": "e3607aae-ab0a-4954-968c-613ebd192eeb",
+      "2977a806-dd08-4233-b4d1-bd1521ec0d16": "2977a806-dd08-4233-b4d1-bd1521ec0d16"
+    },
     "release_enabled": false,
     "sql_migrations_enabled": true,
     "semantic_enabled": false,
-    "schedule_enabled": false
+    "schedule_enabled": false,
+    "shared_read_connections": [
+      "e3607aae-ab0a-4954-968c-613ebd192eeb",
+      "2977a806-dd08-4233-b4d1-bd1521ec0d16"
+    ]
   },
   "test": {
     "workspace_id": "74fa18f7-20d4-4800-9051-6796923b397a",

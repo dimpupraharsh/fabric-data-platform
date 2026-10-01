@@ -56,19 +56,24 @@ def prepare(environment, stage):
         path.unlink()
     rules = [{"find_value": inventory["source_workspace_id"],
               "replace_value": {environment: "$workspace.$id"}}]
+    if stage != "foundation":
+        # Runtime Python strings are not all native item-reference fields. Explicit
+        # rules also cover notebook REST calls and Gold-health model identifiers.
+        for item in inventory["items"]:
+            rules.append({"find_value": item["source_id"],
+                          "replace_value": {environment: f"$items.{item['type']}.{item['name']}.$id"}})
     if stage == "application":
         for source in connection_references(output / "workspace"):
             target = config["connections"].get(source)
             if not target:
                 raise RuntimeError(f"Missing {environment} connection binding for {source}")
-            if environment != "production" and source == target:
+            if environment != "production" and source == target and source not in config.get("shared_read_connections", []):
                 raise RuntimeError(f"Non-production cannot silently reuse a Production connector: {source}")
             rules.append({"find_value": source, "replace_value": {environment: target}})
     old_endpoint = "ogzcft3boiduvg2pubg5425bwe-wk5kd64yabsuxh2pzmye24nxaa.datawarehouse.fabric.microsoft.com"
-    if stage == "semantic":
+    if stage != "foundation":
         rules.append({"find_value": old_endpoint, "ignore_case": "true",
-                      "replace_value": {environment: "$items.Warehouse.wh_retail_gold.$sqlendpoint"},
-                      "item_type": "SemanticModel"})
+                      "replace_value": {environment: "$items.Warehouse.wh_retail_gold.$sqlendpoint"}})
     parameter_file = output / "parameter.yml"
     parameter_file.write_text(yaml.safe_dump({"find_replace": rules}, sort_keys=False))
     return config, output / "workspace", parameter_file
