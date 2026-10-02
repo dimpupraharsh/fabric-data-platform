@@ -73,6 +73,17 @@ copy business data or prove a physical manifest was written.
 probe; it must pass before a release proceeds. Full SCD2/late-arrival/KPI fixture
 testing remains a further Production gate. Production release flags stay false.
 
+On 2026-10-02, GitHub run
+[36954704106](https://github.com/dimpupraharsh/fabric-data-platform/actions/runs/36954704106)
+passed the hardened Dev -> Test release at commit
+`b2b88d36f8b6eb8a94053c1e6a1dc3821320e01d`. Both CI identities completed
+migrations, definition publication, binding/schema audits, all nine metadata
+control-contract checks and the bounded connector probe. Dev probe job:
+`83f29577-696f-4c8e-b0be-a9036382ba52`; Test probe job:
+`69d5e005-3284-4a7d-b115-80afa80984a6`. Each probe expected one synthetic row,
+checked four S3 files and performed zero ingestion checkpoint updates. The later
+runner pin and metadata inventory update do not constitute a Production release.
+
 ## Rollback Procedure
 
 Re-promote the previous known-good commit/artifact through the same gates.

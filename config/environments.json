@@ -46,7 +46,8 @@
       "DataPipeline/pl_bronze_pg_order_header": "330e76f8-1fdf-42f5-ad8a-9c3f90ee6ae6",
       "DataPipeline/pl_bronze_pg_incremental_all": "2898f482-65f1-4a1e-89b9-6c3bbe9b9784",
       "DataPipeline/pl_bronze_orchestrator": "7b97ce64-ff32-47c2-8b2a-412c8aff2fdc",
-      "DataPipeline/pl_daily_retail_processing": "5f69ceea-3e91-45dc-9f76-12a107fcdf44"
+      "DataPipeline/pl_daily_retail_processing": "5f69ceea-3e91-45dc-9f76-12a107fcdf44",
+      "DataPipeline/pl_cicd_connectivity_probe": "775ce582-f2c6-4216-8b10-224028d3e643"
     }
   },
   "test": {
