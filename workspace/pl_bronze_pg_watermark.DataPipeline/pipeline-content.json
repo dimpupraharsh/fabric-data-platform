@@ -683,6 +683,108 @@
                 "connection": "ffb74af9-9d17-4429-8493-02465e631244"
               },
               "description": "Records a checkpoint-commit activity failure for operator investigation; inspect control state before retrying."
+            },
+            {
+              "name": "PropagateFailAfterCountBoundedSourceRows",
+              "type": "Fail",
+              "description": "Preserves the failed child outcome after cleanup, even if failure logging itself fails; downstream success branches must not run.",
+              "dependsOn": [
+                {
+                  "activity": "FailAfterCountBoundedSourceRows",
+                  "dependencyConditions": [
+                    "Completed"
+                  ]
+                }
+              ],
+              "typeProperties": {
+                "message": "Source/transform activity CountBoundedSourceRows failed. Inspect that activity and FailAfterCountBoundedSourceRows control logging; do not promote or advance failed work.",
+                "errorCode": "RETAIL_UPSTREAM_ACTIVITY_FAILED"
+              }
+            },
+            {
+              "name": "PropagateFailAfterRegisterExpectedRows",
+              "type": "Fail",
+              "description": "Preserves the failed child outcome after cleanup, even if failure logging itself fails; downstream success branches must not run.",
+              "dependsOn": [
+                {
+                  "activity": "FailAfterRegisterExpectedRows",
+                  "dependencyConditions": [
+                    "Completed"
+                  ]
+                }
+              ],
+              "typeProperties": {
+                "message": "Source/transform activity RegisterExpectedRows failed. Inspect that activity and FailAfterRegisterExpectedRows control logging; do not promote or advance failed work.",
+                "errorCode": "RETAIL_UPSTREAM_ACTIVITY_FAILED"
+              }
+            },
+            {
+              "name": "PropagateFailAfterResetStagedBatchForReplay",
+              "type": "Fail",
+              "description": "Preserves the failed child outcome after cleanup, even if failure logging itself fails; downstream success branches must not run.",
+              "dependsOn": [
+                {
+                  "activity": "FailAfterResetStagedBatchForReplay",
+                  "dependencyConditions": [
+                    "Completed"
+                  ]
+                }
+              ],
+              "typeProperties": {
+                "message": "Source/transform activity ResetStagedBatchForReplay failed. Inspect that activity and FailAfterResetStagedBatchForReplay control logging; do not promote or advance failed work.",
+                "errorCode": "RETAIL_UPSTREAM_ACTIVITY_FAILED"
+              }
+            },
+            {
+              "name": "PropagateFailAfterCopyBoundedRowsToBronze",
+              "type": "Fail",
+              "description": "Preserves the failed child outcome after cleanup, even if failure logging itself fails; downstream success branches must not run.",
+              "dependsOn": [
+                {
+                  "activity": "FailAfterCopyBoundedRowsToBronze",
+                  "dependencyConditions": [
+                    "Completed"
+                  ]
+                }
+              ],
+              "typeProperties": {
+                "message": "Source/transform activity CopyBoundedRowsToBronze failed. Inspect that activity and FailAfterCopyBoundedRowsToBronze control logging; do not promote or advance failed work.",
+                "errorCode": "RETAIL_UPSTREAM_ACTIVITY_FAILED"
+              }
+            },
+            {
+              "name": "PropagateFailAfterValidateBatchAndWriteManifest",
+              "type": "Fail",
+              "description": "Preserves the failed child outcome after cleanup, even if failure logging itself fails; downstream success branches must not run.",
+              "dependsOn": [
+                {
+                  "activity": "FailAfterValidateBatchAndWriteManifest",
+                  "dependencyConditions": [
+                    "Completed"
+                  ]
+                }
+              ],
+              "typeProperties": {
+                "message": "Source/transform activity ValidateBatchAndWriteManifest failed. Inspect that activity and FailAfterValidateBatchAndWriteManifest control logging; do not promote or advance failed work.",
+                "errorCode": "RETAIL_UPSTREAM_ACTIVITY_FAILED"
+              }
+            },
+            {
+              "name": "PropagateFailAfterCommitCheckpoint",
+              "type": "Fail",
+              "description": "Preserves the failed child outcome after cleanup, even if failure logging itself fails; downstream success branches must not run.",
+              "dependsOn": [
+                {
+                  "activity": "FailAfterCommitCheckpoint",
+                  "dependencyConditions": [
+                    "Completed"
+                  ]
+                }
+              ],
+              "typeProperties": {
+                "message": "Source/transform activity CommitCheckpoint failed. Inspect that activity and FailAfterCommitCheckpoint control logging; do not promote or advance failed work.",
+                "errorCode": "RETAIL_UPSTREAM_ACTIVITY_FAILED"
+              }
             }
           ],
           "ifFalseActivities": []

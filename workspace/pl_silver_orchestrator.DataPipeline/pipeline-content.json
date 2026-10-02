@@ -470,6 +470,91 @@
           "connection": "ffb74af9-9d17-4429-8493-02465e631244"
         },
         "description": "Marks the Silver run failed when a hard invariant fails; inspect reconciliation_result and notebook output before retrying."
+      },
+      {
+        "name": "PropagateLogDimensionsFailure",
+        "type": "Fail",
+        "description": "Preserves the failed child outcome after cleanup, even if failure logging itself fails; downstream success branches must not run.",
+        "dependsOn": [
+          {
+            "activity": "LogDimensionsFailure",
+            "dependencyConditions": [
+              "Completed"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "message": "Source/transform activity BuildSilverDimensionsAndBridges failed. Inspect that activity and LogDimensionsFailure control logging; do not promote or advance failed work.",
+          "errorCode": "RETAIL_UPSTREAM_ACTIVITY_FAILED"
+        }
+      },
+      {
+        "name": "PropagateLogEventsFailure",
+        "type": "Fail",
+        "description": "Preserves the failed child outcome after cleanup, even if failure logging itself fails; downstream success branches must not run.",
+        "dependsOn": [
+          {
+            "activity": "LogEventsFailure",
+            "dependencyConditions": [
+              "Completed"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "message": "Source/transform activity BuildSilverEventFacts failed. Inspect that activity and LogEventsFailure control logging; do not promote or advance failed work.",
+          "errorCode": "RETAIL_UPSTREAM_ACTIVITY_FAILED"
+        }
+      },
+      {
+        "name": "PropagateLogSalesFailure",
+        "type": "Fail",
+        "description": "Preserves the failed child outcome after cleanup, even if failure logging itself fails; downstream success branches must not run.",
+        "dependsOn": [
+          {
+            "activity": "LogSalesFailure",
+            "dependencyConditions": [
+              "Completed"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "message": "Source/transform activity BuildSilverSalesFact failed. Inspect that activity and LogSalesFailure control logging; do not promote or advance failed work.",
+          "errorCode": "RETAIL_UPSTREAM_ACTIVITY_FAILED"
+        }
+      },
+      {
+        "name": "PropagateLogOrderFactFailure",
+        "type": "Fail",
+        "description": "Preserves the failed child outcome after cleanup, even if failure logging itself fails; downstream success branches must not run.",
+        "dependsOn": [
+          {
+            "activity": "LogOrderFactFailure",
+            "dependencyConditions": [
+              "Completed"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "message": "Source/transform activity BuildSilverOrderFact failed. Inspect that activity and LogOrderFactFailure control logging; do not promote or advance failed work.",
+          "errorCode": "RETAIL_UPSTREAM_ACTIVITY_FAILED"
+        }
+      },
+      {
+        "name": "PropagateLogReconciliationFailure",
+        "type": "Fail",
+        "description": "Preserves the failed child outcome after cleanup, even if failure logging itself fails; downstream success branches must not run.",
+        "dependsOn": [
+          {
+            "activity": "LogReconciliationFailure",
+            "dependencyConditions": [
+              "Completed"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "message": "Source/transform activity ReconcileSilverModel failed. Inspect that activity and LogReconciliationFailure control logging; do not promote or advance failed work.",
+          "errorCode": "RETAIL_UPSTREAM_ACTIVITY_FAILED"
+        }
       }
     ]
   }

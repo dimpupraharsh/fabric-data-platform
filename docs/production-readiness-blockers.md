@@ -9,6 +9,17 @@ against the current definitions on 2026-10-02. They remain unresolved.
 
 ## Correctness Findings
 
+The two failure-propagation definition findings now have fixes: eleven cleanup
+branches end with an explicit Fail activity using a Completed dependency, which
+also covers failure of logging itself. Isolated runtime tests passed for Bronze
+and Silver patterns with successful and failed cleanup. Parent jobs
+`e4ae631a-60a6-4198-893e-52579bdca1c8` and
+`a41e895f-8dcd-47ea-9d9e-b671266181bb` failed as intended; their downstream
+Gold sentinel never executed. Production still retains its existing definitions.
+The CI promotion of these fixes must pass separately before treating Dev/Test
+deployment as verified. These tests substitute constant SQL for business work;
+they do not prove real Copy/manifest or lease-cleanup behavior.
+
 | Finding | Current risk | Required remediation and test |
 | --- | --- | --- |
 | Bronze failure propagation | Successful cleanup Scripts can handle an upstream failed activity, leaving a successful child outcome | Add explicit failure propagation after failure logging; fault-inject counting, Copy, manifest and commit branches and require parent failure |

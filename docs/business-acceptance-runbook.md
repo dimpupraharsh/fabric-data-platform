@@ -89,6 +89,26 @@ formatting, full-code read-back and mandatory exit-result assertions now prevent
 this false positive. Offline tests cover empty results and isolation violations.
 GitHub OIDC execution is a separate gate from this interactive result.
 
+## Failure Propagation Gate
+
+```bash
+python deploy/test_failure_paths.py --environment test
+python deploy/test_failure_paths.py --environment test --execute
+```
+
+This separate Test-only harness creates three owned pipeline fixtures. It copies
+the reviewed Bronze/Silver Fail activities and the daily parent invocation shape,
+substituting constant SQL and deliberate divide-by-zero errors. Both successful
+and failed cleanup must produce the intended child error code and a failed
+parent. The success-dependent Gold sentinel must never execute. Some Fabric run
+queries omit never-started activities, so evidence labels an absent sentinel
+`NotExecuted` rather than inventing a recorded Skipped activity. Definition
+read-back verifies the sentinel exists with the correct dependencies.
+
+Runtime pattern checks passed for both cases on 2026-10-02. Generated evidence is
+`output/failure_acceptance.json`; Test CI preserves it with the business results.
+This is not a test of actual Copy failures, physical manifests or cleanup SQL.
+
 ## Coverage Limits and Remaining Production Gates
 
 - Fixture landing is direct Delta writing, not the production source Copy path.

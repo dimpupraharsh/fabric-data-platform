@@ -55,7 +55,10 @@ def test_business_gate_is_test_only_and_preserves_evidence():
     assert gate["if"] == "inputs.environment == 'test'"
     evidence = next(step for step in steps if step.get("name") == "Preserve business acceptance evidence")
     assert evidence["if"] == "always() && inputs.environment == 'test'"
-    assert evidence["with"]["path"] == "output/business_acceptance.json"
+    assert "output/business_acceptance.json" in evidence["with"]["path"]
+    assert "output/failure_acceptance.json" in evidence["with"]["path"]
+    failure = next(step for step in steps if "test_failure_paths.py" in step.get("run", ""))
+    assert failure["if"] == "inputs.environment == 'test'"
 
 
 def test_transformation_exit_contract():
