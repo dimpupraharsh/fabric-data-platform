@@ -70,8 +70,12 @@ for leases, failed-run checkpoint safety, count/manifest guards, replay and sche
 drift. Its dedicated fixture is inactive after completion. These tests do not
 copy business data or prove a physical manifest was written.
 `test_connectivity.py --environment test` performs a separate bounded runtime
-probe; it must pass before a release proceeds. Full SCD2/late-arrival/KPI fixture
-testing remains a further Production gate. Production release flags stay false.
+probe; it must pass before a release proceeds. Test additionally runs the isolated
+Silver/Gold business fixture described in [business acceptance](business-acceptance-runbook.md).
+This gate requires the notebook's twelve assertion results and Gold reconciliation,
+not only a successful job status. Evidence is uploaded as a GitHub artifact.
+Physical manifest recovery, complete orchestration and semantic serving remain
+further Production gates. Production release flags stay false.
 
 On 2026-10-02, GitHub run
 [36954704106](https://github.com/dimpupraharsh/fabric-data-platform/actions/runs/36954704106)
