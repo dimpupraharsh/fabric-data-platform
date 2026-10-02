@@ -1,6 +1,13 @@
 name: Promote Fabric Release
 on:
   workflow_dispatch:
+    inputs:
+      promote_to:
+        description: Highest approved environment for this immutable release
+        required: true
+        default: test
+        type: choice
+        options: [test, production]
 permissions:
   contents: read
 concurrency:
@@ -22,6 +29,14 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements.txt
       - run: python deploy/check_repository.py && pytest -q
+      - name: Fail closed before requesting a Production approval
+        if: inputs.promote_to == 'production'
+        run: |
+          python - <<'PY'
+          import json
+          config = json.load(open('config/environments.json'))['production']
+          assert all(config[key] for key in ('release_enabled', 'sql_migrations_enabled', 'semantic_enabled')), 'Production adoption and integration gates are not yet approved'
+          PY
       - name: Package the tested commit once
         id: pack
         shell: bash
@@ -55,6 +70,7 @@ jobs:
       id-token: write
   production:
     needs: [candidate, test]
+    if: inputs.promote_to == 'production'
     uses: ./.github/workflows/release-environment.yml
     with:
       environment: production

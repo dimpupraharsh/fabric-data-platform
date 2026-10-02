@@ -54,7 +54,13 @@ class FabricAPI:
             if method == "GET" and response.status_code in (429, 502, 503, 504):
                 time.sleep(min(int(response.headers.get("Retry-After", "10")), 60))
                 continue
-            response.raise_for_status()
+            if not response.ok:
+                try:
+                    error = response.json()
+                except ValueError:
+                    error = {"errorCode": response.reason}
+                raise RuntimeError(f"Fabric {method} {urlparse(url).path}: HTTP {response.status_code}; "
+                                   f"{error.get('errorCode')}: {error.get('message', '')}; request_id={error.get('requestId', '')}")
             if response.status_code == 202:
                 return self._wait(response.headers.get("Location"))
             return response.json() if response.content else {}

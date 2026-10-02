@@ -1,7 +1,5 @@
 name: OIDC Readiness
 on:
-  push:
-    branches: [setup/enterprise-fabric-cicd]
   workflow_dispatch:
 permissions:
   contents: read

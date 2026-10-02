@@ -51,3 +51,9 @@ jobs:
         run: |
           python deploy/verify_bindings.py --environment '${{ inputs.environment }}'
           python deploy/smoke.py --environment '${{ inputs.environment }}' --application
+      - name: Test deployed checkpoint and failure contracts without ingesting data
+        if: inputs.environment != 'production'
+        run: python deploy/test_control_contracts.py --environment '${{ inputs.environment }}'
+      - name: Run bounded nonproduction gateway, S3, SQL and Lakehouse probe
+        if: inputs.environment != 'production'
+        run: python deploy/test_connectivity.py --environment '${{ inputs.environment }}'

@@ -1,7 +1,7 @@
 name: Deploy Nonproduction Candidate
 on:
   push:
-    branches: [setup/enterprise-fabric-cicd]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read

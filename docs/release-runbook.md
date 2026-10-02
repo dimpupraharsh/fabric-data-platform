@@ -44,7 +44,32 @@ Do not approve a production release based solely on item counts. Check connector
 rebinding, fixture reconciliation, rerun idempotency, SCD2 history, late arrivals,
 drift rejection, failure recovery, KPI audit and the semantic model connection.
 
-## Rollback
+## Native Deployment Pipeline and Runtime Gates
+
+The native `fabric retail intelligence platform` pipeline has correctly assigned
+Dev/Test workspaces. Existing retail Production is a template-app workspace;
+assignment fails with `ALM_InvalidRequest_TemplateAppWorkspacesNotSupported`.
+Do not deploy to its empty Production stage, substitute the unrelated workspace
+named `Production`, or recreate the existing retail workspace. GitHub remains
+the single release authority; native stage comparisons do not authorize UI
+deployments. Direct Lake models need explicit target datasource rebinding.
+
+Dev/Test have separate SQL workspace-identity and Lakehouse OAuth connectors.
+Gateway-backed copies require `allowConnectionUsageInGateway=true` on the
+Lakehouse sink. Bootstrap now preserves this setting without changing Production.
+The Oct 2 Test probe remains blocked by gateway outbound connectivity to
+`uks.frontend.clouddatahub.net` (error 2015); inspect DNS, TLS/outbound 443 and
+gateway diagnostics on Windows. Never weaken TLS or firewall protections blindly.
+
+`test_control_contracts.py --environment test` passed nine metadata-only tests
+for leases, failed-run checkpoint safety, count/manifest guards, replay and schema
+drift. Its dedicated fixture is inactive after completion. These tests do not
+copy business data or prove a physical manifest was written.
+`test_connectivity.py --environment test` performs a separate bounded runtime
+probe; it must pass before a release proceeds. Full SCD2/late-arrival/KPI fixture
+testing remains a further Production gate. Production release flags stay false.
+
+## Rollback Procedure
 
 Re-promote the previous known-good commit/artifact through the same gates.
 Do not delete/recreate Warehouses or Lakehouses, reset checkpoints, or automatically

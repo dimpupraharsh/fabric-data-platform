@@ -51,6 +51,18 @@ def main():
     config["shared_read_connections"] = SOURCE_READ_CONNECTIONS
     for identifier in SOURCE_READ_CONNECTIONS:
         config["connections"][identifier] = identifier
+    lakehouse_id = config["connections"].get("aedad88b-3c1c-470e-8f95-bfafb37f40c5")
+    if lakehouse_id and lakehouse_id != "aedad88b-3c1c-470e-8f95-bfafb37f40c5":
+        # Gateway-backed PostgreSQL copies must be allowed to use this cloud sink.
+        lakehouse = api.call("GET", f"connections/{lakehouse_id}")
+        if lakehouse["connectionDetails"]["type"] != "Lakehouse":
+            raise RuntimeError("Configured Lakehouse sink has an unexpected connector type")
+        if not lakehouse.get("allowConnectionUsageInGateway", False):
+            api.call("PATCH", f"connections/{lakehouse_id}", {
+                "connectivityType": "ShareableCloud", "allowConnectionUsageInGateway": True})
+        verified = api.call("GET", f"connections/{lakehouse_id}")
+        if not verified.get("allowConnectionUsageInGateway", False):
+            raise RuntimeError("Lakehouse gateway usage was not enabled")
     path.write_text(json.dumps(configurations, indent=2) + "\n")
 
 
