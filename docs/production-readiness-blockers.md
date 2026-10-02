@@ -50,7 +50,9 @@ Preserve it while using the gated GitHub release design, or approve a separately
 planned migration to a normal workspace. No migration/deletion is authorized by
 this status document. Dev and Test remain assigned to the native pipeline.
 
-Physical manifest/recovery and semantic serving still require acceptance.
+Physical manifest/recovery still requires acceptance. The separate isolated
+semantic model passed delegated-operator measure/datasource checks; that does
+not establish target-environment or service-principal SSO serving readiness.
 The scoped AWS OIDC infrastructure role is not yet authorized/verified.
 Production SQL adoption, release flags and temporary branch permission cleanup
 remain approval/governance gates. A single-owner portfolio and trial capacity

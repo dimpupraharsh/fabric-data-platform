@@ -115,12 +115,39 @@ This is not a test of actual Copy failures, physical manifests or cleanup SQL.
 - Gold SQL is executed by the authenticated test runner, not a Gold pipeline job.
 - Actual physical manifest commits and end-to-end orchestration are not proven
   by metadata-only contract tests or this fixture.
-- Semantic-model serving, KPI queries and datasource binding require a separate
-  acceptance check before Production approval.
+- This Spark/SQL harness does not test semantic serving. A separate operator
+  fixture check is described below; target-environment serving remains a release
+  gate and must not be inferred from an isolated fixture.
 - Local interactive execution is not evidence that GitHub OIDC can execute the
   same job. Verify the acceptance workflow under the Test CI identity separately.
 - Keep Production flags disabled until these gates and the workspace deployment
   decision are resolved. Never use acceptance fixtures as retail business data.
+
+## Separate Semantic Serving Check
+
+```bash
+python deploy/test_semantic_acceptance.py --environment test
+python deploy/test_semantic_acceptance.py --environment test --execute
+```
+
+After business acceptance, this operator-only check creates or reuses
+`sm_cicd_business_acceptance`, copying the published Test model and rebinding
+exactly its Gold datasource to the owned acceptance Warehouse. Live datasource
+read-back must confirm that Warehouse before any measure query. The query API
+must return one complete measure row with no top-level or nested errors; even
+an HTTP 200 response is rejected when its result contains an error.
+
+On 2026-10-02 model `ed78c505-b276-4a65-82ec-f7f7df96b78d` passed: Gross
+Booked Sales 230.00, Sales Lines 4, Eligible Orders 4, SLA Eligible Deliveries 2.
+All four measures matched `gold.kpi_audit`. Evidence is retained privately in
+`output/semantic_acceptance.json`; no Production model or source was changed.
+
+Use delegated operator authentication. Microsoft does not support service
+principals for Execute Queries against SSO-enabled models; do not remove SSO or
+bypass RLS to make the CI principal pass:
+[Execute Queries requirements](https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/execute-queries-in-group).
+This operator check is not automatically part of the OIDC workflow and does not
+establish Production semantic-model readiness.
 
 ## Production Deployment-Pipeline Blocker
 
