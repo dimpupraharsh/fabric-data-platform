@@ -4,8 +4,9 @@
 
 Do not enable Production release flags yet. Connector tests and the isolated
 business fixture are necessary evidence, not proof that all production failure
-and concurrency paths are correct. The following open PR findings were checked
-against the current definitions on 2026-10-02. They remain unresolved.
+and concurrency paths are correct. PR findings were checked against the current
+definitions on 2026-10-02. Two failure-propagation findings were remediated and
+their review threads resolved; three data-correctness findings remain open.
 
 ## Correctness Findings
 
@@ -16,8 +17,11 @@ and Silver patterns with successful and failed cleanup. Parent jobs
 `e4ae631a-60a6-4198-893e-52579bdca1c8` and
 `a41e895f-8dcd-47ea-9d9e-b671266181bb` failed as intended; their downstream
 Gold sentinel never executed. Production still retains its existing definitions.
-The CI promotion of these fixes must pass separately before treating Dev/Test
-deployment as verified. These tests substitute constant SQL for business work;
+GitHub Dev/Test release `36959708090` passed at commit
+`6066b04a67fc1e01c7f2f219b9e3d42bac3ac6d1`. It published the eleven Fail
+activities and passed both fault scenarios under the Test CI identity, followed
+by the twelve Silver checks and ten Gold SQL stages. These tests substitute
+constant SQL for failure-path business work;
 they do not prove real Copy/manifest or lease-cleanup behavior.
 
 | Finding | Current risk | Required remediation and test |
@@ -36,6 +40,8 @@ Relevant definitions:
 - `workspace/nb_silver_sales.Notebook/notebook-content.py`
 - `control.sp_start_silver_run` and `control.sp_finish_silver_run`
 
+The remaining open review findings are independent S3 snapshot alignment,
+changed DQ classifications, and overlapping-arrival checkpoint safety.
 The current business fixture uses matching reference-arrival timestamps, tests
 an unchanged reject classification, and executes transformations sequentially.
 It therefore cannot close these findings. Do not resolve review threads merely

@@ -91,6 +91,15 @@ control-contract checks and the bounded connector probe. Dev probe job:
 checked four S3 files and performed zero ingestion checkpoint updates. The later
 runner pin and metadata inventory update do not constitute a Production release.
 
+Subsequent releases `36958405291` and `36959708090` passed under GitHub OIDC.
+The latter published the eleven explicit failure-propagation activities at
+`6066b04a67fc1e01c7f2f219b9e3d42bac3ac6d1`, tested successful/failed cleanup,
+required failed child/parent outcomes with no downstream Gold execution, and
+passed the twelve Silver fixture checks and ten Gold SQL stages. Evidence is
+retained in its `business-acceptance-6066b04a67fc1e01c7f2f219b9e3d42bac3ac6d1`
+artifact. An independent delegated-operator semantic check passed separately.
+Three data-correctness review findings remain unresolved; Production is unchanged.
+
 ## Rollback Procedure
 
 Re-promote the previous known-good commit/artifact through the same gates.
