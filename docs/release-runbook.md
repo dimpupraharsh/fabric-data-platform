@@ -76,6 +76,9 @@ This gate requires the notebook's twelve assertion results and Gold reconciliati
 not only a successful job status. Evidence is uploaded as a GitHub artifact.
 Physical manifest recovery, complete orchestration and semantic serving remain
 further Production gates. Production release flags stay false.
+Open pipeline failure, snapshot alignment, DQ-transition and checkpoint findings
+are documented in [Production blockers](production-readiness-blockers.md).
+A passing fixture does not close those untested cases or authorize promotion.
 
 On 2026-10-02, GitHub run
 [36954704106](https://github.com/dimpupraharsh/fabric-data-platform/actions/runs/36954704106)
