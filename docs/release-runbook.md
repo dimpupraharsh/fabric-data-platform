@@ -57,9 +57,13 @@ deployments. Direct Lake models need explicit target datasource rebinding.
 Dev/Test have separate SQL workspace-identity and Lakehouse OAuth connectors.
 Gateway-backed copies require `allowConnectionUsageInGateway=true` on the
 Lakehouse sink. Bootstrap now preserves this setting without changing Production.
-The Oct 2 Test probe remains blocked by gateway outbound connectivity to
-`uks.frontend.clouddatahub.net` (error 2015); inspect DNS, TLS/outbound 443 and
-gateway diagnostics on Windows. Never weaken TLS or firewall protections blindly.
+The Oct 2 Test probe initially failed with gateway error 2015, but run
+`e24bd8ca-fdc4-47ef-9474-37ec16e708d6` passed after the source container and
+Windows VM were started. All four S3 checks, SQL and one-row PostgreSQL copy
+succeeded without ingestion checkpoint updates. Keep the gateway VM and source
+online. Inspect DNS, TLS/outbound 443 and gateway diagnostics if this recurs;
+never weaken TLS or firewall protections blindly. Workflow runners are pinned
+to Ubuntu 24.04 to match the SQL-driver package source.
 
 `test_control_contracts.py --environment test` passed nine metadata-only tests
 for leases, failed-run checkpoint safety, count/manifest guards, replay and schema

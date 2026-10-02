@@ -17,7 +17,7 @@ concurrency:
 jobs:
   release:
     environment: ${{ inputs.environment }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
