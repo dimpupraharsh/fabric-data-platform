@@ -4,8 +4,9 @@
 
 PostgreSQL is transactional; S3 contains geography/fulfillment references. These
 sources are not Terraform state storage. Workspaces, connector targets, SQL
-schemas and checkpoints are separate per environment. Production is adopted in
-place; publishing definitions never copies or replaces business data.
+schemas and checkpoints are separate per environment. Legacy Production was
+adopted in place and is now awaiting an approved normal-workspace cutover;
+publishing definitions never copies or replaces business data.
 
 ## Pull Requests
 
@@ -46,11 +47,12 @@ drift rejection, failure recovery, KPI audit and the semantic model connection.
 
 ## Native Deployment Pipeline and Runtime Gates
 
-The native `fabric retail intelligence platform` pipeline has correctly assigned
-Dev/Test workspaces. Existing retail Production is a template-app workspace;
-assignment fails with `ALM_InvalidRequest_TemplateAppWorkspacesNotSupported`.
-Do not deploy to its empty Production stage, substitute the unrelated workspace
-named `Production`, or recreate the existing retail workspace. GitHub remains
+The native `fabric retail intelligence platform` pipeline has all three stages
+assigned. The normal replacement Production workspace was Terraform-created
+and assigned on 2026-10-03; four foundation containers are empty. Legacy
+template-app Production retains its data and gated runtime bindings pending
+cutover. See [Production cutover](production-workspace-cutover.md). Stage
+attachment is not an application deployment or data migration. GitHub remains
 the single release authority; native stage comparisons do not authorize UI
 deployments. Direct Lake models need explicit target datasource rebinding.
 

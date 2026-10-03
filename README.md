@@ -8,7 +8,13 @@ source datasets, credentials, Terraform state, or production run history.
 
 - Dev: development and bounded test data; schedules disabled.
 - Test: release verification and isolated checkpoints; schedules disabled.
-- Production: existing retail platform and daily schedule, preserved in place.
+- Production: normal replacement assigned to the native stage; four empty
+  foundation containers. Legacy retail runtime/data are preserved until verified
+  migration and cutover. Release gates remain disabled.
+
+See [Production cutover](docs/production-workspace-cutover.md) and
+`config/production_cutover.json`. `config/environments.json` intentionally keeps
+legacy runtime bindings until the replacement is ready to serve data.
 
 Infrastructure is Terraform-managed. Fabric application definitions are published
 using pinned `fabric-cicd`; Warehouse schemas use checksum-locked SQL migrations.

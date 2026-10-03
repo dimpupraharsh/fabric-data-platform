@@ -50,11 +50,15 @@ alongside the remediation and verify actual pipeline failure outcomes.
 
 ## Deployment and Governance
 
-Existing Production is a template-app workspace. Native deployment-pipeline
-assignment returns `ALM_InvalidRequest_TemplateAppWorkspacesNotSupported`.
-Preserve it while using the gated GitHub release design, or approve a separately
-planned migration to a normal workspace. No migration/deletion is authorized by
-this status document. Dev and Test remain assigned to the native pipeline.
+The legacy runtime is a template-app workspace excluded from native stage
+assignment. On 2026-10-03 the user authorized replacement: Terraform created
+normal workspace `300b8bbe-ee03-4a93-913f-16293c6117e4` and its Production
+stage assignment succeeded. Four empty foundation containers exist there.
+All 29 legacy items remain intact; data/state migration and retirement are not
+complete. This removes the assignment blocker, not the correctness gates.
+See [Production cutover](production-workspace-cutover.md). Keep legacy runtime
+bindings gated until verified migration, rebinding, recovery and one-schedule
+cutover. Never delete the data-bearing workspace merely to fix stage eligibility.
 
 Physical manifest/recovery still requires acceptance. The separate isolated
 semantic model passed delegated-operator measure/datasource checks; that does
@@ -72,6 +76,7 @@ must not be described as independent enterprise approvals or paid-production SLA
 4. Fix reference enrichment history and test staggered S3 snapshots.
 5. Run expanded business, manifest/replay and semantic acceptance under appropriate identities.
 6. Resolve only verified review findings and merge through protected checks.
-7. Decide Production workspace strategy; then approve SQL adoption/promotion.
+7. Complete the approved replacement cutover and reconciliation before legacy
+   retirement, Production SQL adoption and code promotion.
 
 Never reset Production checkpoints or replace its business data to make a test pass.
