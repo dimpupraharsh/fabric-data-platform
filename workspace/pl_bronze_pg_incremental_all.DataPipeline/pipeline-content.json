@@ -1,0 +1,196 @@
+{
+  "properties": {
+    "description": "Runs the four PostgreSQL fact/event objects serially through the metadata parent. Each object gets its own lock, bounded watermark, batch manifest, and commit record; serial execution protects gateway and source capacity.",
+    "activities": [
+      {
+        "name": "RunSalesOrderLineWatermark",
+        "type": "ExecutePipeline",
+        "dependsOn": [],
+        "policy": {
+          "secureInput": false
+        },
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "d3adcc89-45e2-417b-8af6-b39cde4c4893",
+            "type": "PipelineReference"
+          },
+          "parameters": {
+            "source_object_id": {
+              "value": "@string(1003)",
+              "type": "Expression"
+            },
+            "source_schema": {
+              "value": "@string('retail_oi')",
+              "type": "Expression"
+            },
+            "source_table": {
+              "value": "@string('sales_order_line')",
+              "type": "Expression"
+            },
+            "bronze_target": {
+              "value": "@string('pg_sales_order_line')",
+              "type": "Expression"
+            },
+            "watermark_column": {
+              "value": "@string('dwh_load_ts')",
+              "type": "Expression"
+            },
+            "tie_breaker_column": {
+              "value": "@string('sales_key')",
+              "type": "Expression"
+            }
+          },
+          "waitOnCompletion": true
+        },
+        "description": "Runs metadata object 1003 for sales_order_line through the shared bounded watermark child and waits for completion before the next object."
+      },
+      {
+        "name": "RunOrderStatusEventWatermark",
+        "type": "ExecutePipeline",
+        "dependsOn": [
+          {
+            "activity": "RunSalesOrderLineWatermark",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "secureInput": false
+        },
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "d3adcc89-45e2-417b-8af6-b39cde4c4893",
+            "type": "PipelineReference"
+          },
+          "parameters": {
+            "source_object_id": {
+              "value": "@string(1004)",
+              "type": "Expression"
+            },
+            "source_schema": {
+              "value": "@string('retail_oi')",
+              "type": "Expression"
+            },
+            "source_table": {
+              "value": "@string('order_status_event')",
+              "type": "Expression"
+            },
+            "bronze_target": {
+              "value": "@string('pg_order_status_event')",
+              "type": "Expression"
+            },
+            "watermark_column": {
+              "value": "@string('dwh_load_ts')",
+              "type": "Expression"
+            },
+            "tie_breaker_column": {
+              "value": "@string('event_key')",
+              "type": "Expression"
+            }
+          },
+          "waitOnCompletion": true
+        },
+        "description": "Runs metadata object 1004 for order_status_event through the shared bounded watermark child."
+      },
+      {
+        "name": "RunShipmentStatusEventWatermark",
+        "type": "ExecutePipeline",
+        "dependsOn": [
+          {
+            "activity": "RunOrderStatusEventWatermark",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "secureInput": false
+        },
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "d3adcc89-45e2-417b-8af6-b39cde4c4893",
+            "type": "PipelineReference"
+          },
+          "parameters": {
+            "source_object_id": {
+              "value": "@string(1005)",
+              "type": "Expression"
+            },
+            "source_schema": {
+              "value": "@string('retail_oi')",
+              "type": "Expression"
+            },
+            "source_table": {
+              "value": "@string('shipment_status_event')",
+              "type": "Expression"
+            },
+            "bronze_target": {
+              "value": "@string('pg_shipment_status_event')",
+              "type": "Expression"
+            },
+            "watermark_column": {
+              "value": "@string('dwh_load_ts')",
+              "type": "Expression"
+            },
+            "tie_breaker_column": {
+              "value": "@string('event_key')",
+              "type": "Expression"
+            }
+          },
+          "waitOnCompletion": true
+        },
+        "description": "Runs metadata object 1005 for shipment_status_event through the shared bounded watermark child."
+      },
+      {
+        "name": "RunPaymentStatusEventWatermark",
+        "type": "ExecutePipeline",
+        "dependsOn": [
+          {
+            "activity": "RunShipmentStatusEventWatermark",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "secureInput": false
+        },
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "d3adcc89-45e2-417b-8af6-b39cde4c4893",
+            "type": "PipelineReference"
+          },
+          "parameters": {
+            "source_object_id": {
+              "value": "@string(1006)",
+              "type": "Expression"
+            },
+            "source_schema": {
+              "value": "@string('retail_oi')",
+              "type": "Expression"
+            },
+            "source_table": {
+              "value": "@string('payment_status_event')",
+              "type": "Expression"
+            },
+            "bronze_target": {
+              "value": "@string('pg_payment_status_event')",
+              "type": "Expression"
+            },
+            "watermark_column": {
+              "value": "@string('dwh_load_ts')",
+              "type": "Expression"
+            },
+            "tie_breaker_column": {
+              "value": "@string('event_key')",
+              "type": "Expression"
+            }
+          },
+          "waitOnCompletion": true
+        },
+        "description": "Runs metadata object 1006 for payment_status_event through the shared bounded watermark child."
+      }
+    ]
+  }
+}

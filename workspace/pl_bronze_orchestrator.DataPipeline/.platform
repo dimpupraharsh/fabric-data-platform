@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "pl_bronze_orchestrator",
+    "description": "Resolves approved source metadata and routes PostgreSQL deltas, master snapshots, or S3 reference snapshots. Snapshots append run-tagged SCD2 history; facts/events use bounded watermarks. Runs only when triggered or scheduled."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "356f985f-4bfd-4e4a-a994-9279e21bebce"
+  }
+}

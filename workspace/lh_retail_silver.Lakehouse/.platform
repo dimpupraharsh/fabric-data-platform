@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Lakehouse",
+    "displayName": "lh_retail_silver",
+    "description": "Conformed Lakehouse for validated and deduplicated retail data, SCD Type 1/2 dimensions, line-item sales and event facts, reference joins, late-arrival handling, and quality rejects."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "008a8245-d6ca-42fb-bd45-17e1dfef0835"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "sm_retail_order_intelligence",
+    "description": "Certified retail Gold semantic model. Line and order facts use audited eligibility rules; documented DAX measures cover revenue, orders, SLA, lifecycle, payments, and YoY."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "fb836d66-97d2-4ba6-a084-c0ddef57159a"
+  }
+}

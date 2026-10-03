@@ -1,0 +1,5 @@
+bucket       = "retail-oi-terraform-state-981450247725"
+key          = "foundation/state_bucket.tfstate"
+region       = "eu-north-1"
+encrypt      = true
+use_lockfile = true

@@ -1,0 +1,115 @@
+{
+  "properties": {
+    "description": "One-time PostgreSQL baseline initializer: writes the first bounded numeric-key range with overwrite semantics. Use only for an approved initial load or deliberate rebuild; later ranges use the append child. Not for recurring incremental capture.",
+    "parameters": {
+      "source_object_id": {
+        "type": "String"
+      },
+      "source_schema": {
+        "type": "String",
+        "defaultValue": "retail_oi"
+      },
+      "source_table": {
+        "type": "String"
+      },
+      "partition_column": {
+        "type": "String"
+      },
+      "lower_key": {
+        "type": "String",
+        "defaultValue": "0"
+      },
+      "upper_key": {
+        "type": "String"
+      },
+      "bronze_target": {
+        "type": "String"
+      }
+    },
+    "activities": [
+      {
+        "name": "CopyFirstPostgreSqlBaselinePartition",
+        "type": "Copy",
+        "dependsOn": [],
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 2,
+          "retryIntervalInSeconds": 60,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "source": {
+            "type": "PostgreSqlSource",
+            "partitionOption": "None",
+            "queryTimeout": "04:00:00",
+            "query": {
+              "value": "@concat('SELECT * FROM \"', pipeline().parameters.source_schema, '\".\"', pipeline().parameters.source_table, '\" WHERE \"', pipeline().parameters.partition_column, '\" > ', pipeline().parameters.lower_key, ' AND \"', pipeline().parameters.partition_column, '\" <= ', pipeline().parameters.upper_key, ' ORDER BY \"', pipeline().parameters.partition_column, '\"')",
+              "type": "Expression"
+            },
+            "datasetSettings": {
+              "annotations": [],
+              "type": "PostgreSqlTable",
+              "schema": [],
+              "typeProperties": {
+                "schema": {
+                  "value": "@pipeline().parameters.source_schema",
+                  "type": "Expression"
+                },
+                "table": {
+                  "value": "@pipeline().parameters.source_table",
+                  "type": "Expression"
+                }
+              },
+              "version": "2.0",
+              "externalReferences": {
+                "connection": "e3607aae-ab0a-4954-968c-613ebd192eeb"
+              }
+            }
+          },
+          "sink": {
+            "type": "LakehouseTableSink",
+            "tableActionOption": "Overwrite",
+            "applyVOrder": true,
+            "datasetSettings": {
+              "annotations": [],
+              "connectionSettings": {
+                "name": "DestinationLakehouse",
+                "properties": {
+                  "annotations": [],
+                  "type": "Lakehouse",
+                  "typeProperties": {
+                    "workspaceId": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
+                    "artifactId": "ed2e34f8-b837-43c6-b6ba-de68cd7e0079",
+                    "rootFolder": "Tables"
+                  },
+                  "externalReferences": {
+                    "connection": "aedad88b-3c1c-470e-8f95-bfafb37f40c5"
+                  }
+                }
+              },
+              "type": "LakehouseTable",
+              "schema": [],
+              "typeProperties": {
+                "table": {
+                  "value": "@pipeline().parameters.bronze_target",
+                  "type": "Expression"
+                }
+              }
+            }
+          },
+          "enableStaging": false,
+          "translator": {
+            "type": "TabularTranslator",
+            "typeConversion": true,
+            "typeConversionSettings": {
+              "allowDataTruncation": false,
+              "treatBooleanAsNumber": false
+            }
+          }
+        },
+        "description": "Initializes the first approved PostgreSQL baseline partition with overwrite semantics; use only for the first load or an authorized rebuild."
+      }
+    ]
+  }
+}

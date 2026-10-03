@@ -1,0 +1,284 @@
+{
+  "properties": {
+    "concurrency": 1,
+    "description": "Daily PostgreSQL Bronze, incremental Silver, audited Gold publication, and a logged semantic-serving health gate. S3 reference snapshots refresh separately.",
+    "activities": [
+      {
+        "name": "BronzeCustomerSnapshot",
+        "type": "ExecutePipeline",
+        "dependsOn": [],
+        "policy": {
+          "secureInput": false
+        },
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "356f985f-4bfd-4e4a-a994-9279e21bebce",
+            "type": "PipelineReference"
+          },
+          "parameters": {
+            "source_object_id": {
+              "value": "@string(1001)",
+              "type": "Expression"
+            }
+          },
+          "waitOnCompletion": true
+        },
+        "description": "Invokes the metadata-driven Bronze parent for PostgreSQL customer object 1001 and waits for the snapshot append to succeed."
+      },
+      {
+        "name": "BronzeProductSnapshot",
+        "type": "ExecutePipeline",
+        "dependsOn": [
+          {
+            "activity": "BronzeCustomerSnapshot",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "secureInput": false
+        },
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "356f985f-4bfd-4e4a-a994-9279e21bebce",
+            "type": "PipelineReference"
+          },
+          "parameters": {
+            "source_object_id": {
+              "value": "@string(1002)",
+              "type": "Expression"
+            }
+          },
+          "waitOnCompletion": true
+        },
+        "description": "Invokes the metadata-driven Bronze parent for PostgreSQL product object 1002 after the customer snapshot succeeds."
+      },
+      {
+        "name": "BronzeSalesWatermark",
+        "type": "ExecutePipeline",
+        "dependsOn": [
+          {
+            "activity": "BronzeProductSnapshot",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "secureInput": false
+        },
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "356f985f-4bfd-4e4a-a994-9279e21bebce",
+            "type": "PipelineReference"
+          },
+          "parameters": {
+            "source_object_id": {
+              "value": "@string(1003)",
+              "type": "Expression"
+            }
+          },
+          "waitOnCompletion": true
+        },
+        "description": "Invokes the metadata-driven Bronze parent for sales object 1003 after both master snapshots succeed."
+      },
+      {
+        "name": "BronzeOrderEventsWatermark",
+        "type": "ExecutePipeline",
+        "dependsOn": [
+          {
+            "activity": "BronzeSalesWatermark",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "secureInput": false
+        },
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "356f985f-4bfd-4e4a-a994-9279e21bebce",
+            "type": "PipelineReference"
+          },
+          "parameters": {
+            "source_object_id": {
+              "value": "@string(1004)",
+              "type": "Expression"
+            }
+          },
+          "waitOnCompletion": true
+        },
+        "description": "Invokes the metadata-driven Bronze parent for order event object 1004 after sales delta completion."
+      },
+      {
+        "name": "BronzeShipmentEventsWatermark",
+        "type": "ExecutePipeline",
+        "dependsOn": [
+          {
+            "activity": "BronzeOrderEventsWatermark",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "secureInput": false
+        },
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "356f985f-4bfd-4e4a-a994-9279e21bebce",
+            "type": "PipelineReference"
+          },
+          "parameters": {
+            "source_object_id": {
+              "value": "@string(1005)",
+              "type": "Expression"
+            }
+          },
+          "waitOnCompletion": true
+        },
+        "description": "Invokes the metadata-driven Bronze parent for shipment event object 1005 after order event completion."
+      },
+      {
+        "name": "BronzePaymentEventsWatermark",
+        "type": "ExecutePipeline",
+        "dependsOn": [
+          {
+            "activity": "BronzeShipmentEventsWatermark",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "secureInput": false
+        },
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "356f985f-4bfd-4e4a-a994-9279e21bebce",
+            "type": "PipelineReference"
+          },
+          "parameters": {
+            "source_object_id": {
+              "value": "@string(1006)",
+              "type": "Expression"
+            }
+          },
+          "waitOnCompletion": true
+        },
+        "description": "Invokes the metadata-driven Bronze parent for payment event object 1006 after shipment event completion."
+      },
+      {
+        "name": "BronzeOrderHeaderWatermark",
+        "type": "ExecutePipeline",
+        "dependsOn": [
+          {
+            "activity": "BronzePaymentEventsWatermark",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "secureInput": false
+        },
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "373eb164-7433-4409-b385-d3f672c851f6",
+            "type": "PipelineReference"
+          },
+          "waitOnCompletion": true
+        },
+        "description": "Loads changed complete-population order headers as source object 1007 and waits for the Bronze manifest and watermark checkpoint to commit."
+      },
+      {
+        "name": "SilverIncrementalProcessing",
+        "type": "ExecutePipeline",
+        "dependsOn": [
+          {
+            "activity": "BronzeOrderHeaderWatermark",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "secureInput": false
+        },
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "54dabacf-ac3b-4298-84df-bec5fe8fd82f",
+            "type": "PipelineReference"
+          },
+          "parameters": {
+            "load_mode": {
+              "value": "@string('incremental')",
+              "type": "Expression"
+            }
+          },
+          "waitOnCompletion": true
+        },
+        "description": "Starts Silver incremental processing only after all seven PostgreSQL Bronze loads, including order headers, complete successfully."
+      },
+      {
+        "name": "GoldAuditedPublication",
+        "type": "ExecutePipeline",
+        "dependsOn": [
+          {
+            "activity": "SilverIncrementalProcessing",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "secureInput": false
+        },
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "bc238ab9-2ca8-4754-b8dc-e2e2050b7e1a",
+            "type": "PipelineReference"
+          },
+          "waitOnCompletion": true
+        },
+        "description": "Builds Gold candidate tables, audits the KPI contract, and transactionally replaces live Gold rows only after the Silver child succeeds. Failure leaves the prior publication in place."
+      },
+      {
+        "name": "PostGoldServingHealth",
+        "type": "TridentNotebook",
+        "dependsOn": [
+          {
+            "activity": "GoldAuditedPublication",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "notebookId": "2305d7d9-966a-4799-8dd9-29a32381b98b",
+          "workspaceId": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
+          "parameters": {
+            "pipeline_run_id": {
+              "value": "@pipeline().RunId",
+              "type": "string"
+            },
+            "max_age_minutes": {
+              "value": 180,
+              "type": "int"
+            }
+          }
+        },
+        "description": "Compares the published Gold audit, freshness timestamp, and four certified KPIs with the live semantic model; logs the result in wh_retail_control and fails the parent on a stale or mismatched view."
+      }
+    ]
+  }
+}

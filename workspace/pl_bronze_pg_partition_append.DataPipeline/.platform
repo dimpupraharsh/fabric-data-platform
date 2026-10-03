@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "pl_bronze_pg_partition_append",
+    "description": "One-time PostgreSQL baseline continuation: appends a bounded non-overlapping key range to a target initialized by the overwrite child. The lower-exclusive/upper-inclusive interval prevents boundary duplicates. Not for recurring incremental loads."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "be2e54f2-531c-4c3f-8cdd-71db6456c5f5"
+  }
+}

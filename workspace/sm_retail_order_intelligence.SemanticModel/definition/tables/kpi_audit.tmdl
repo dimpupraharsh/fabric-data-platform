@@ -1,0 +1,203 @@
+table kpi_audit
+	lineageTag: 945780d2-2ece-49c1-84f2-2f5579a477fc
+	sourceLineageTag: [gold].[kpi_audit]
+
+	column audited_at_utc
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: datetime2
+		lineageTag: 07d55aa0-8638-466e-a39c-9d62807d3948
+		sourceLineageTag: audited_at_utc
+		summarizeBy: none
+		sourceColumn: audited_at_utc
+
+		annotation SummarizationSetBy = Automatic
+
+	column sales_line_count
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 24978423-02be-4617-b2fa-f121958a86b7
+		sourceLineageTag: sales_line_count
+		summarizeBy: sum
+		sourceColumn: sales_line_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column distinct_sales_keys
+		dataType: int64
+		formatString: 0
+		sourceProviderType: int
+		lineageTag: 033b877a-9ef0-4e28-8d7b-81cdb81c5ebf
+		sourceLineageTag: distinct_sales_keys
+		summarizeBy: sum
+		sourceColumn: distinct_sales_keys
+
+		annotation SummarizationSetBy = Automatic
+
+	column eligible_sales_line_count
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 343c4c47-da5c-4370-8fdb-748e6ef92492
+		sourceLineageTag: eligible_sales_line_count
+		summarizeBy: sum
+		sourceColumn: eligible_sales_line_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column order_identity_mismatch_line_count
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 349d020f-3408-4451-9fa3-6d6dc1bfee2e
+		sourceLineageTag: order_identity_mismatch_line_count
+		summarizeBy: sum
+		sourceColumn: order_identity_mismatch_line_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column eligible_gross_booked_sales_amount
+		dataType: double
+		sourceProviderType: decimal(38, 2)
+		lineageTag: a33db3fe-9d78-4f56-992e-f0d77e00270c
+		sourceLineageTag: eligible_gross_booked_sales_amount
+		summarizeBy: sum
+		sourceColumn: eligible_gross_booked_sales_amount
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column order_count
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 2a8332d3-3cb9-4165-a956-dd1b1e5973ac
+		sourceLineageTag: order_count
+		summarizeBy: sum
+		sourceColumn: order_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column distinct_order_numbers
+		dataType: int64
+		formatString: 0
+		sourceProviderType: int
+		lineageTag: 24e56853-a37c-4338-9b35-a38db61b695c
+		sourceLineageTag: distinct_order_numbers
+		summarizeBy: sum
+		sourceColumn: distinct_order_numbers
+
+		annotation SummarizationSetBy = Automatic
+
+	column eligible_order_count
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: ff6214e6-7c28-4438-81c2-1512aa54323d
+		sourceLineageTag: eligible_order_count
+		summarizeBy: sum
+		sourceColumn: eligible_order_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column orders_without_lines
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 60873d9a-8a4b-4427-bab5-4d06964c6c45
+		sourceLineageTag: orders_without_lines
+		summarizeBy: sum
+		sourceColumn: orders_without_lines
+
+		annotation SummarizationSetBy = Automatic
+
+	column invalid_status_or_date_order_count
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 2015df7b-cd64-4984-8461-fb9d4dacd2a6
+		sourceLineageTag: invalid_status_or_date_order_count
+		summarizeBy: sum
+		sourceColumn: invalid_status_or_date_order_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column shipping_sla_eligible_order_count
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 6128f804-bbcf-4431-adb5-2bbe93732753
+		sourceLineageTag: shipping_sla_eligible_order_count
+		summarizeBy: sum
+		sourceColumn: shipping_sla_eligible_order_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column daily_gross_booked_sales_amount
+		dataType: double
+		sourceProviderType: decimal(38, 2)
+		lineageTag: 6e59f06a-9ae5-42ad-97ba-e43a22ba77a8
+		sourceLineageTag: daily_gross_booked_sales_amount
+		summarizeBy: sum
+		sourceColumn: daily_gross_booked_sales_amount
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column monthly_gross_booked_sales_amount
+		dataType: double
+		sourceProviderType: decimal(38, 2)
+		lineageTag: 1975fb8e-bdd3-42ef-be38-90228de4aeca
+		sourceLineageTag: monthly_gross_booked_sales_amount
+		summarizeBy: sum
+		sourceColumn: monthly_gross_booked_sales_amount
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column lifecycle_eligible_order_count
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: c8f4b90c-4f4f-485e-b8f7-c0273f2ff757
+		sourceLineageTag: lifecycle_eligible_order_count
+		summarizeBy: sum
+		sourceColumn: lifecycle_eligible_order_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column payment_eligible_order_count
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 42bc7d3c-ea9d-4389-83d4-cc61a803f999
+		sourceLineageTag: payment_eligible_order_count
+		summarizeBy: sum
+		sourceColumn: payment_eligible_order_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column shipping_mart_order_count
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 171f8a2d-3bc4-4722-9a53-056df5dd04bf
+		sourceLineageTag: shipping_mart_order_count
+		summarizeBy: sum
+		sourceColumn: shipping_mart_order_count
+
+		annotation SummarizationSetBy = Automatic
+
+	partition kpi_audit = entity
+		mode: directLake
+		source
+			entityName: kpi_audit
+			schemaName: gold
+			expressionSource: DatabaseQuery
+
+	annotation PBI_ResultType = Table
+

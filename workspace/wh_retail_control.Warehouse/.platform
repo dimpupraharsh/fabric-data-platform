@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Warehouse",
+    "displayName": "wh_retail_control",
+    "description": "Metadata-driven control plane for source configuration, pipeline and object runs, locks and checkpoints, schema contracts/drift, batch manifests, and quality results. Contains no retail business facts or credentials."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "c8dbe07a-2181-4c0c-bec9-b7719017bb9f"
+  }
+}

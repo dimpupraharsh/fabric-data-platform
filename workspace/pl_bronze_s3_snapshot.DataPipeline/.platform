@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "pl_bronze_s3_snapshot",
+    "description": "Appends an approved S3 reference CSV as a full-file snapshot with Fabric run, source, arrival-time, and batch lineage. Run when the file changes; this is not row-level CDC. Retained versions preserve geography and coverage history for Silver SCD2."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "03588d93-cfc8-4121-ac7b-72a846bb8147"
+  }
+}

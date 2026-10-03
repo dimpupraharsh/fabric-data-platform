@@ -1,0 +1,180 @@
+{
+  "properties": {
+    "description": "Appends an approved S3 reference CSV as a full-file snapshot with Fabric run, source, arrival-time, and batch lineage. Run when the file changes; this is not row-level CDC. Retained versions preserve geography and coverage history for Silver SCD2.",
+    "parameters": {
+      "source_object_id": {
+        "type": "String"
+      },
+      "source_object_name": {
+        "type": "String"
+      },
+      "source_folder": {
+        "type": "String"
+      },
+      "source_file": {
+        "type": "String"
+      },
+      "bronze_target": {
+        "type": "String"
+      }
+    },
+    "activities": [
+      {
+        "name": "PrepareSnapshotTargetSchema",
+        "type": "TridentNotebook",
+        "dependsOn": [],
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "notebookId": "e8453a82-24a9-4bf5-9fa2-82faaef77da6",
+          "workspaceId": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
+          "parameters": {
+            "bronze_target": {
+              "value": "@pipeline().parameters.bronze_target",
+              "type": "string"
+            },
+            "ingestion_batch_id": {
+              "value": "@concat('snapshot-', pipeline().RunId, '-', pipeline().parameters.source_object_id)",
+              "type": "string"
+            }
+          }
+        },
+        "description": "Adds nullable Bronze ingest-lineage columns when missing and removes only rows belonging to this retry batch; existing baseline rows are preserved."
+      },
+      {
+        "name": "CopyS3ReferenceSnapshotToBronze",
+        "type": "Copy",
+        "dependsOn": [
+          {
+            "activity": "PrepareSnapshotTargetSchema",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 2,
+          "retryIntervalInSeconds": 60,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "source": {
+            "type": "DelimitedTextSource",
+            "additionalColumns": [
+              {
+                "name": "dwh_ingest_run_id",
+                "value": {
+                  "value": "@pipeline().RunId",
+                  "type": "Expression"
+                }
+              },
+              {
+                "name": "dwh_source_object",
+                "value": {
+                  "value": "@pipeline().parameters.source_object_name",
+                  "type": "Expression"
+                }
+              },
+              {
+                "name": "dwh_ingest_ts",
+                "value": {
+                  "value": "@utcnow()",
+                  "type": "Expression"
+                }
+              },
+              {
+                "name": "dwh_ingest_batch_id",
+                "value": {
+                  "value": "@concat('snapshot-', pipeline().RunId, '-', pipeline().parameters.source_object_id)",
+                  "type": "Expression"
+                }
+              }
+            ],
+            "storeSettings": {
+              "type": "AmazonS3ReadSettings",
+              "recursive": false,
+              "wildcardFileName": {
+                "value": "@pipeline().parameters.source_file",
+                "type": "Expression"
+              }
+            },
+            "formatSettings": {
+              "type": "DelimitedTextReadSettings",
+              "skipLineCount": 0
+            },
+            "datasetSettings": {
+              "annotations": [],
+              "type": "DelimitedText",
+              "schema": [],
+              "typeProperties": {
+                "location": {
+                  "type": "AmazonS3Location",
+                  "bucketName": "fabric-datawarehouse-project",
+                  "folderPath": {
+                    "value": "@pipeline().parameters.source_folder",
+                    "type": "Expression"
+                  }
+                },
+                "columnDelimiter": ",",
+                "escapeChar": "\\",
+                "firstRowAsHeader": true,
+                "quoteChar": "\""
+              },
+              "externalReferences": {
+                "connection": "2977a806-dd08-4233-b4d1-bd1521ec0d16"
+              }
+            }
+          },
+          "sink": {
+            "type": "LakehouseTableSink",
+            "tableActionOption": "Append",
+            "applyVOrder": true,
+            "datasetSettings": {
+              "annotations": [],
+              "connectionSettings": {
+                "name": "DestinationLakehouse",
+                "properties": {
+                  "annotations": [],
+                  "type": "Lakehouse",
+                  "typeProperties": {
+                    "workspaceId": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
+                    "artifactId": "ed2e34f8-b837-43c6-b6ba-de68cd7e0079",
+                    "rootFolder": "Tables"
+                  },
+                  "externalReferences": {
+                    "connection": "aedad88b-3c1c-470e-8f95-bfafb37f40c5"
+                  }
+                }
+              },
+              "type": "LakehouseTable",
+              "schema": [],
+              "typeProperties": {
+                "table": {
+                  "value": "@pipeline().parameters.bronze_target",
+                  "type": "Expression"
+                }
+              }
+            }
+          },
+          "enableStaging": false,
+          "translator": {
+            "type": "TabularTranslator",
+            "typeConversion": true,
+            "typeConversionSettings": {
+              "allowDataTruncation": false,
+              "treatBooleanAsNumber": false
+            }
+          }
+        },
+        "description": "Reads the configured S3 CSV as a complete reference snapshot and appends run, source, arrival-time, and batch lineage to Bronze."
+      }
+    ]
+  }
+}

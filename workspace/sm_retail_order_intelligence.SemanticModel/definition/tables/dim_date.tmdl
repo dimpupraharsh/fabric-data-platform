@@ -1,0 +1,89 @@
+table dim_date
+	lineageTag: bc0ca0e2-d63c-4bc1-99a7-ed2f75c846c5
+	sourceLineageTag: [gold].[dim_date]
+
+	column calendar_date
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: date
+		lineageTag: 90c5c016-da97-4c50-8c68-46136cc860ac
+		sourceLineageTag: calendar_date
+		summarizeBy: none
+		sourceColumn: calendar_date
+
+		annotation SummarizationSetBy = Automatic
+
+	column calendar_year
+		dataType: int64
+		formatString: 0
+		sourceProviderType: int
+		lineageTag: fc3ba5ae-034a-469c-97cd-c0e33d9892fc
+		sourceLineageTag: calendar_year
+		summarizeBy: sum
+		sourceColumn: calendar_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column calendar_quarter
+		dataType: int64
+		formatString: 0
+		sourceProviderType: int
+		lineageTag: 1fc73417-88e7-4583-a163-4b8d064a375f
+		sourceLineageTag: calendar_quarter
+		summarizeBy: sum
+		sourceColumn: calendar_quarter
+
+		annotation SummarizationSetBy = Automatic
+
+	column calendar_month
+		dataType: int64
+		formatString: 0
+		sourceProviderType: int
+		lineageTag: 74b52b7a-9145-4d0f-99fe-868ce09d5599
+		sourceLineageTag: calendar_month
+		summarizeBy: sum
+		sourceColumn: calendar_month
+
+		annotation SummarizationSetBy = Automatic
+
+	column month_name
+		dataType: string
+		sourceProviderType: varchar(20)
+		lineageTag: ec53380f-9cb5-40ca-8e20-7df57e5d9cfc
+		sourceLineageTag: month_name
+		summarizeBy: none
+		sourceColumn: month_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column day_of_month
+		dataType: int64
+		formatString: 0
+		sourceProviderType: int
+		lineageTag: 926c686e-2d1a-4021-8bf1-a442292caea3
+		sourceLineageTag: day_of_month
+		summarizeBy: sum
+		sourceColumn: day_of_month
+
+		annotation SummarizationSetBy = Automatic
+
+	column month_start_date
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: date
+		lineageTag: c37818f9-ac63-4e1a-ba07-7178e94d6fb8
+		sourceLineageTag: month_start_date
+		summarizeBy: none
+		sourceColumn: month_start_date
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_date = entity
+		mode: directLake
+		source
+			entityName: dim_date
+			schemaName: gold
+			expressionSource: DatabaseQuery
+
+	annotation PBI_ResultType = Table
+

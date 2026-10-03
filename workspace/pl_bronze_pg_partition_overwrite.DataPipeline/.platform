@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "pl_bronze_pg_partition_overwrite",
+    "description": "One-time PostgreSQL baseline initializer: writes the first bounded numeric-key range with overwrite semantics. Use only for an approved initial load or deliberate rebuild; later ranges use the append child. Not for recurring incremental capture."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "392caa98-d9c2-4cfd-9199-c081c60790c5"
+  }
+}
