@@ -25,6 +25,7 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - run: python deploy/check_repository.py
+      - run: python scripts/check_publication.py
       - run: pytest -q
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:

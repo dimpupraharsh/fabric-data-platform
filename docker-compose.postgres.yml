@@ -1,0 +1,19 @@
+services:
+  postgres:
+    container_name: salefisher-postgres
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-salefisher}
+      POSTGRES_USER: ${POSTGRES_USER:-salefisher}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD locally}
+    ports:
+      - "${POSTGRES_BIND_ADDRESS:-127.0.0.1}:5432:5432"
+    volumes:
+      - salefisher_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+volumes:
+  salefisher_postgres_data:
