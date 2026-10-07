@@ -1,0 +1,24 @@
+name: Defect report
+description: Report a reproducible code or documentation issue without private data.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: Never paste credentials, raw source records, Terraform state or private screenshots.
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour and affected component
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction and sanitized error
+      description: Include environment, commit and fixture versus physical source execution.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Verification scope and remaining risk
