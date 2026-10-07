@@ -65,7 +65,7 @@ semantic model passed delegated-operator measure/datasource checks; that does
 not establish target-environment or service-principal SSO serving readiness.
 The scoped AWS OIDC infrastructure role is not yet authorized/verified.
 Production SQL adoption, release flags and temporary branch permission cleanup
-remain approval/governance gates. A single-owner portfolio and trial capacity
+remain approval/governance gates. A single-owner implementation and trial capacity
 must not be described as independent enterprise approvals or paid-production SLA.
 
 ## Safe Implementation Order

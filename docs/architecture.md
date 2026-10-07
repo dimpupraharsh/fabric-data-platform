@@ -6,7 +6,7 @@
 flowchart TB
     CSV[Private CRM and ERP CSV seeds] --> STG[PostgreSQL staging]
     STG --> PG[(PostgreSQL retail_oi)]
-    SIM[Local source simulation] --> PG
+    SIM[Controlled source-change generator] --> PG
     REF[Local reference generator] --> S3[(Private AWS S3 retail_ref)]
     PG --> GW[Windows gateway]
     GW --> PC[PostgreSQL snapshot or watermark child]
