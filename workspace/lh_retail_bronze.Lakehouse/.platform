@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Lakehouse",
+    "displayName": "lh_retail_bronze",
+    "description": "Raw landing Lakehouse for source-shaped PostgreSQL and S3 arrivals. Preserves source values and ingestion lineage for replay and audit; business cleansing, joins, and deduplication belong in Silver."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "ed2e34f8-b837-43c6-b6ba-de68cd7e0079"
+  }
+}

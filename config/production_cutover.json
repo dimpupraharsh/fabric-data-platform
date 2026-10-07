@@ -1,0 +1,26 @@
+{
+  "status": "foundation_attached_data_migration_pending",
+  "verified_at": "2026-10-03",
+  "legacy_workspace_id": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
+  "target_workspace_id": "300b8bbe-ee03-4a93-913f-16293c6117e4",
+  "target_workspace_name": "Retail Order Intelligence Platform - Production",
+  "deployment_pipeline_id": "36eae116-42d0-498d-a280-8060a4aecccb",
+  "production_stage_id": "2a7292c1-0e30-426c-9e71-6c9d64a7a77f",
+  "target_runtime_principal_id": "2939e0f9-9746-4ea0-8418-aff2e05a611c",
+  "target_item_ids": {
+    "Lakehouse/lh_retail_bronze": "618d6a81-dea0-4c95-bcd7-f5ea9a80a724",
+    "Lakehouse/lh_retail_silver": "0baadf8c-87d0-4bc7-9a97-9d0156b0d125",
+    "Warehouse/wh_retail_control": "7574acc9-f42e-4660-8c36-37ec323e3856",
+    "Warehouse/wh_retail_gold": "a610bebd-4add-481f-8f8b-ea1e880715f1",
+    "SQLEndpoint/lh_retail_bronze": "28a71416-7df0-49b1-a534-f1d5a28e9f9c",
+    "SQLEndpoint/lh_retail_silver": "fad1752a-e1cf-46fe-b0c9-26056bb13dfc"
+  },
+  "legacy_inventory_items": 29,
+  "foundation_created": ["lh_retail_bronze", "lh_retail_silver", "wh_retail_control", "wh_retail_gold"],
+  "release_enabled": false,
+  "schedule_enabled": false,
+  "data_migrated": false,
+  "legacy_deleted": false,
+  "active_runtime_configuration": "environments.json retains legacy production bindings until verified cutover",
+  "deletion_gate": "Migrate and reconcile business data and control state, rebind and test all connections and serving, verify recovery and one active schedule, then retire the legacy workspace through reviewed Terraform changes"
+}

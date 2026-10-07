@@ -1,0 +1,165 @@
+{
+  "properties": {
+    "description": "Appends an approved PostgreSQL master snapshot with Fabric run, source, arrival-time, and batch lineage. Adds nullable columns without rewriting baseline rows. Preserves history for Silver SCD2; does not advance source watermarks.",
+    "parameters": {
+      "source_object_id": {
+        "type": "String"
+      },
+      "source_schema": {
+        "type": "String",
+        "defaultValue": "retail_oi"
+      },
+      "source_table": {
+        "type": "String"
+      },
+      "bronze_target": {
+        "type": "String"
+      }
+    },
+    "activities": [
+      {
+        "name": "PrepareSnapshotTargetSchema",
+        "type": "TridentNotebook",
+        "dependsOn": [],
+        "policy": {
+          "timeout": "0.01:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "notebookId": "e8453a82-24a9-4bf5-9fa2-82faaef77da6",
+          "workspaceId": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
+          "parameters": {
+            "bronze_target": {
+              "value": "@pipeline().parameters.bronze_target",
+              "type": "string"
+            },
+            "ingestion_batch_id": {
+              "value": "@concat('snapshot-', pipeline().RunId, '-', pipeline().parameters.source_object_id)",
+              "type": "string"
+            }
+          }
+        },
+        "description": "Adds nullable Bronze ingest-lineage columns when missing and removes only rows belonging to this retry batch; existing baseline rows are preserved."
+      },
+      {
+        "name": "CopySourceObjectToBronze",
+        "type": "Copy",
+        "dependsOn": [
+          {
+            "activity": "PrepareSnapshotTargetSchema",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 2,
+          "retryIntervalInSeconds": 60,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "source": {
+            "type": "PostgreSqlSource",
+            "partitionOption": "None",
+            "queryTimeout": "02:00:00",
+            "additionalColumns": [
+              {
+                "name": "dwh_ingest_run_id",
+                "value": {
+                  "value": "@pipeline().RunId",
+                  "type": "Expression"
+                }
+              },
+              {
+                "name": "dwh_source_object",
+                "value": {
+                  "value": "@concat(pipeline().parameters.source_schema, '.', pipeline().parameters.source_table)",
+                  "type": "Expression"
+                }
+              },
+              {
+                "name": "dwh_ingest_ts",
+                "value": {
+                  "value": "@utcnow()",
+                  "type": "Expression"
+                }
+              },
+              {
+                "name": "dwh_ingest_batch_id",
+                "value": {
+                  "value": "@concat('snapshot-', pipeline().RunId, '-', pipeline().parameters.source_object_id)",
+                  "type": "Expression"
+                }
+              }
+            ],
+            "datasetSettings": {
+              "annotations": [],
+              "type": "PostgreSqlTable",
+              "schema": [],
+              "typeProperties": {
+                "schema": {
+                  "value": "@pipeline().parameters.source_schema",
+                  "type": "Expression"
+                },
+                "table": {
+                  "value": "@pipeline().parameters.source_table",
+                  "type": "Expression"
+                }
+              },
+              "version": "2.0",
+              "externalReferences": {
+                "connection": "e3607aae-ab0a-4954-968c-613ebd192eeb"
+              }
+            }
+          },
+          "sink": {
+            "type": "LakehouseTableSink",
+            "tableActionOption": "Append",
+            "applyVOrder": true,
+            "datasetSettings": {
+              "annotations": [],
+              "connectionSettings": {
+                "name": "DestinationLakehouse",
+                "properties": {
+                  "annotations": [],
+                  "type": "Lakehouse",
+                  "typeProperties": {
+                    "workspaceId": "fba1bab2-0098-4b65-9f4f-cb304d71b700",
+                    "artifactId": "ed2e34f8-b837-43c6-b6ba-de68cd7e0079",
+                    "rootFolder": "Tables"
+                  },
+                  "externalReferences": {
+                    "connection": "aedad88b-3c1c-470e-8f95-bfafb37f40c5"
+                  }
+                }
+              },
+              "type": "LakehouseTable",
+              "schema": [],
+              "typeProperties": {
+                "table": {
+                  "value": "@pipeline().parameters.bronze_target",
+                  "type": "Expression"
+                }
+              }
+            }
+          },
+          "enableStaging": false,
+          "translator": {
+            "type": "TabularTranslator",
+            "typeConversion": true,
+            "typeConversionSettings": {
+              "allowDataTruncation": false,
+              "treatBooleanAsNumber": false
+            }
+          }
+        },
+        "description": "Reads the configured PostgreSQL master table and appends its rows with Fabric run, source-object, arrival-time, and batch lineage."
+      }
+    ]
+  }
+}

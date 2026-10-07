@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "pl_bronze_pg_full_refresh",
+    "description": "Appends an approved PostgreSQL master snapshot with Fabric run, source, arrival-time, and batch lineage. Adds nullable columns without rewriting baseline rows. Preserves history for Silver SCD2; does not advance source watermarks."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "474b2a0d-90c1-4892-b1f8-532482336bf5"
+  }
+}

@@ -1,0 +1,385 @@
+{
+  "properties": {
+    "concurrency": 1,
+    "description": "Builds and audits Gold candidates, then transactionally replaces live rows without dropping semantic-model tables. Gross booked sales is not net revenue.",
+    "activities": [
+      {
+        "name": "ValidateSilverReady",
+        "type": "Script",
+        "dependsOn": [],
+        "policy": {
+          "timeout": "0.04:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": "IF NOT EXISTS (SELECT TOP 1 1 FROM [lh_retail_silver].[conformed].[fact_sales]) RAISERROR('Silver sales fact is empty.',16,1); IF NOT EXISTS (SELECT TOP 1 1 FROM [lh_retail_silver].[conformed].[fact_order]) RAISERROR('Silver order header fact is empty.',16,1);"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "04:00:00"
+        },
+        "externalReferences": {
+          "connection": "0a85b5ac-b0d0-4686-9de2-c3bf62dac800"
+        },
+        "description": "Requires nonempty Silver sales-line and complete-population order facts before preparing a Gold candidate."
+      },
+      {
+        "name": "ClearPriorGoldBuild",
+        "type": "Script",
+        "dependsOn": [
+          {
+            "activity": "ValidateSilverReady",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.04:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": "IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'gold_build') EXEC('CREATE SCHEMA gold_build');\nDROP TABLE IF EXISTS gold_build.kpi_audit;\nDROP TABLE IF EXISTS gold_build.dim_customer_current;\nDROP TABLE IF EXISTS gold_build.dim_date;\nDROP TABLE IF EXISTS gold_build.mart_customer_order_frequency;\nDROP TABLE IF EXISTS gold_build.mart_payment_status;\nDROP TABLE IF EXISTS gold_build.mart_shipping_sla;\nDROP TABLE IF EXISTS gold_build.mart_order_lifecycle;\nDROP TABLE IF EXISTS gold_build.fact_order;\nDROP TABLE IF EXISTS gold_build.mart_sales_yoy;\nDROP TABLE IF EXISTS gold_build.mart_geography_sales;\nDROP TABLE IF EXISTS gold_build.mart_category_performance;\nDROP TABLE IF EXISTS gold_build.mart_product_performance;\nDROP TABLE IF EXISTS gold_build.mart_customer_spend;\nDROP TABLE IF EXISTS gold_build.mart_monthly_sales;\nDROP TABLE IF EXISTS gold_build.mart_daily_sales;\nDROP TABLE IF EXISTS gold_build.fact_sales;\nDROP TABLE IF EXISTS gold_build.dim_location;\nDROP TABLE IF EXISTS gold_build.dim_product;\nDROP TABLE IF EXISTS gold_build.dim_customer;\nDROP TABLE IF EXISTS gold_build.dim_category;"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "04:00:00"
+        },
+        "externalReferences": {
+          "connection": "0a85b5ac-b0d0-4686-9de2-c3bf62dac800"
+        },
+        "description": "Removes only the previous candidate tables; currently served Gold and the semantic model stay available."
+      },
+      {
+        "name": "BuildGoldDimensions",
+        "type": "Script",
+        "dependsOn": [
+          {
+            "activity": "ClearPriorGoldBuild",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.04:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": "-- Gold is a separate serving warehouse; source data remains in Silver.\nIF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'gold_build')\n    EXEC('CREATE SCHEMA gold_build');"
+            },
+            {
+              "type": "Query",
+              "text": "-- Historical category keys are retained so product reclassification does not\n-- rewrite old category performance.\nIF OBJECT_ID('gold_build.dim_category', 'U') IS NULL\n    CREATE TABLE gold_build.dim_category AS\n    SELECT category_key, category, subcategory\n    FROM [lh_retail_silver].[conformed].[dim_category];"
+            },
+            {
+              "type": "Query",
+              "text": "IF OBJECT_ID('gold_build.dim_customer', 'U') IS NULL\n    CREATE TABLE gold_build.dim_customer AS\n    SELECT customer_key, customer_entity_key, customer_id,\n           customer_business_key, first_name, last_name, country,\n           location_entity_key, dwh_effective_from, dwh_effective_to,\n           dwh_is_current, dwh_is_inferred\n    FROM [lh_retail_silver].[conformed].[dim_customer];"
+            },
+            {
+              "type": "Query",
+              "text": "IF OBJECT_ID('gold_build.dim_product', 'U') IS NULL\n    CREATE TABLE gold_build.dim_product AS\n    SELECT product_key, product_entity_key, product_business_key,\n           product_name, product_line, category_key, category,\n           subcategory, dwh_effective_from, dwh_effective_to,\n           dwh_is_current, dwh_is_inferred\n    FROM [lh_retail_silver].[conformed].[dim_product];"
+            },
+            {
+              "type": "Query",
+              "text": "IF OBJECT_ID('gold_build.dim_location', 'U') IS NULL\n    CREATE TABLE gold_build.dim_location AS\n    SELECT location_key, location_entity_key, country, region,\n           subregion, state_province, city, postal_code, market,\n           sales_territory, delivery_zone, standard_sla_days,\n           serviceability_flag, dwh_effective_from, dwh_effective_to,\n           dwh_is_current, dwh_is_inferred\n    FROM [lh_retail_silver].[conformed].[dim_location];"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "04:00:00"
+        },
+        "externalReferences": {
+          "connection": "0a85b5ac-b0d0-4686-9de2-c3bf62dac800"
+        },
+        "description": "Builds candidate SCD2 customer, product, location, and category dimensions from conformed Silver."
+      },
+      {
+        "name": "BuildGoldSalesFact",
+        "type": "Script",
+        "dependsOn": [
+          {
+            "activity": "BuildGoldDimensions",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.04:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": "-- One row per Silver source_sales_key. Order identity is checked against the\n-- complete-population header; the six controlled mismatches remain visible.\n-- Gross booked sales is not recognized revenue or net of refunds/returns.\nIF OBJECT_ID('gold_build.fact_sales', 'U') IS NULL\n    CREATE TABLE gold_build.fact_sales AS\n    SELECT s.sales_key, s.source_sales_key, s.order_number,\n           customer_key, customer_entity_key, product_key,\n           product_entity_key, category_key, location_key,\n           location_entity_key, s.customer_id, product_business_key,\n           s.order_date, s.ship_date, s.due_date,\n           sales_amount, quantity, unit_price,\n           dq_ship_before_order, dq_due_before_order,\n           dq_sales_amount_mismatch, dwh_dq_status,\n           CAST(CASE WHEN h.order_number IS NOT NULL\n                     AND s.customer_id = h.customer_id\n                     AND s.order_date = h.order_date\n                     THEN 0 ELSE 1 END AS bit) AS dq_order_identity_mismatch,\n           CAST(CASE WHEN sales_amount >= 0 AND unit_price >= 0\n                     AND quantity > 0 AND dq_sales_amount_mismatch = 0\n                     AND h.order_number IS NOT NULL\n                     AND s.customer_id = h.customer_id\n                     AND s.order_date = h.order_date\n                     THEN 1 ELSE 0 END AS bit) AS is_sales_eligible,\n           s.dwh_source_load_ts, s.dwh_silver_load_ts,\n           s.dwh_record_hash\n    FROM [lh_retail_silver].[conformed].[fact_sales] AS s\n    LEFT JOIN [lh_retail_silver].[conformed].[fact_order] AS h\n      ON h.order_number = s.order_number;"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "04:00:00"
+        },
+        "externalReferences": {
+          "connection": "0a85b5ac-b0d0-4686-9de2-c3bf62dac800"
+        },
+        "description": "Builds one candidate row per Silver sales line with order-identity and eligibility audit flags."
+      },
+      {
+        "name": "BuildGoldSalesMarts",
+        "type": "Script",
+        "dependsOn": [
+          {
+            "activity": "BuildGoldSalesFact",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.04:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": "-- These are materialized, certified gross-sales summaries. Each reads only\n-- eligible Gold fact rows, so a date warning does not erase a valid sale.\nIF OBJECT_ID('gold_build.mart_daily_sales', 'U') IS NULL\n    CREATE TABLE gold_build.mart_daily_sales AS\n    SELECT order_date,\n           SUM(sales_amount) AS gross_sales_amount,\n           SUM(CAST(quantity AS bigint)) AS units_sold,\n           COUNT_BIG(*) AS sales_line_count,\n           CAST(SUM(sales_amount) / NULLIF(SUM(CAST(quantity AS decimal(18,2))), 0)\n                AS decimal(18,4)) AS average_selling_price\n    FROM gold_build.fact_sales\n    WHERE is_sales_eligible = 1\n    GROUP BY order_date;"
+            },
+            {
+              "type": "Query",
+              "text": "IF OBJECT_ID('gold_build.mart_monthly_sales', 'U') IS NULL\n    CREATE TABLE gold_build.mart_monthly_sales AS\n    SELECT DATEFROMPARTS(YEAR(order_date), MONTH(order_date), 1) AS sales_month,\n           SUM(gross_sales_amount) AS gross_sales_amount,\n           SUM(units_sold) AS units_sold,\n           SUM(sales_line_count) AS sales_line_count,\n           CAST(SUM(gross_sales_amount) / NULLIF(SUM(CAST(units_sold AS decimal(18,2))), 0)\n                AS decimal(18,4)) AS average_selling_price\n    FROM gold_build.mart_daily_sales\n    GROUP BY DATEFROMPARTS(YEAR(order_date), MONTH(order_date), 1);"
+            },
+            {
+              "type": "Query",
+              "text": "-- Stable entity keys collapse SCD2 versions without losing version keys on\n-- the detail fact. This is spend by customer, not order frequency or LTV.\nIF OBJECT_ID('gold_build.mart_customer_spend', 'U') IS NULL\n    CREATE TABLE gold_build.mart_customer_spend AS\n    SELECT customer_entity_key,\n           SUM(sales_amount) AS gross_sales_amount,\n           SUM(CAST(quantity AS bigint)) AS units_sold,\n           COUNT_BIG(*) AS sales_line_count,\n           MIN(order_date) AS first_sales_date,\n           MAX(order_date) AS last_sales_date\n    FROM gold_build.fact_sales\n    WHERE is_sales_eligible = 1\n    GROUP BY customer_entity_key;"
+            },
+            {
+              "type": "Query",
+              "text": "IF OBJECT_ID('gold_build.mart_product_performance', 'U') IS NULL\n    CREATE TABLE gold_build.mart_product_performance AS\n    SELECT product_entity_key,\n           SUM(sales_amount) AS gross_sales_amount,\n           SUM(CAST(quantity AS bigint)) AS units_sold,\n           COUNT_BIG(*) AS sales_line_count\n    FROM gold_build.fact_sales\n    WHERE is_sales_eligible = 1\n    GROUP BY product_entity_key;"
+            },
+            {
+              "type": "Query",
+              "text": "-- Category key is the one resolved on the historical sale. A later product\n-- reclassification cannot silently rewrite prior category totals.\nIF OBJECT_ID('gold_build.mart_category_performance', 'U') IS NULL\n    CREATE TABLE gold_build.mart_category_performance AS\n    SELECT category_key,\n           SUM(sales_amount) AS gross_sales_amount,\n           SUM(CAST(quantity AS bigint)) AS units_sold,\n           COUNT_BIG(*) AS sales_line_count\n    FROM gold_build.fact_sales\n    WHERE is_sales_eligible = 1\n    GROUP BY category_key;"
+            },
+            {
+              "type": "Query",
+              "text": "-- Group on the location version key; the corresponding Gold dimension gives\n-- the geography/zone attributes that were effective for those fact rows.\nIF OBJECT_ID('gold_build.mart_geography_sales', 'U') IS NULL\n    CREATE TABLE gold_build.mart_geography_sales AS\n    SELECT location_key,\n           SUM(sales_amount) AS gross_sales_amount,\n           SUM(CAST(quantity AS bigint)) AS units_sold,\n           COUNT_BIG(*) AS sales_line_count\n    FROM gold_build.fact_sales\n    WHERE is_sales_eligible = 1\n    GROUP BY location_key;"
+            },
+            {
+              "type": "Query",
+              "text": "-- YoY uses complete 2020-2025 calendar years only. 2026 is partial and\n-- belongs in an aligned YTD comparison, not this full-year metric.\nIF OBJECT_ID('gold_build.mart_sales_yoy', 'U') IS NULL\n    CREATE TABLE gold_build.mart_sales_yoy AS\n    WITH annual AS (\n        SELECT YEAR(order_date) AS sales_year,\n               SUM(gross_sales_amount) AS gross_sales_amount,\n               SUM(units_sold) AS units_sold\n        FROM gold_build.mart_daily_sales\n        WHERE order_date >= '2020-01-01' AND order_date < '2026-01-01'\n        GROUP BY YEAR(order_date)\n    )\n    SELECT current_year.sales_year,\n           current_year.gross_sales_amount,\n           previous_year.gross_sales_amount AS prior_year_gross_sales_amount,\n           current_year.units_sold,\n           CAST(100.0 * (current_year.gross_sales_amount - previous_year.gross_sales_amount)\n                / NULLIF(previous_year.gross_sales_amount, 0) AS decimal(18,4))\n                AS gross_sales_yoy_pct\n    FROM annual AS current_year\n    INNER JOIN annual AS previous_year\n      ON previous_year.sales_year = current_year.sales_year - 1;"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "04:00:00"
+        },
+        "externalReferences": {
+          "connection": "0a85b5ac-b0d0-4686-9de2-c3bf62dac800"
+        },
+        "description": "Builds candidate daily, monthly, customer, product, category, geography, and complete-year YoY summaries."
+      },
+      {
+        "name": "BuildGoldOrderMarts",
+        "type": "Script",
+        "dependsOn": [
+          {
+            "activity": "BuildGoldSalesMarts",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.04:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": "-- Header grain is one row per business order. Event facts are sampled and\n-- must never be used as the denominator for company-wide order rates.\nIF OBJECT_ID('gold_build.fact_order', 'U') IS NULL\n    CREATE TABLE gold_build.fact_order AS\n    SELECT h.order_key, h.order_number, h.anchor_sales_key,\n           h.customer_id, s.customer_entity_key, s.location_key,\n           h.order_date, h.ship_date, h.due_date, h.delivered_ts,\n           h.payment_ts, h.order_status, h.shipment_status,\n           h.payment_status, h.status_updated_ts,\n           COALESCE(s.sales_line_count, CAST(0 AS bigint)) AS sales_line_count,\n           COALESCE(s.eligible_sales_line_count, CAST(0 AS bigint)) AS eligible_sales_line_count,\n           COALESCE(s.identity_mismatch_line_count, CAST(0 AS bigint)) AS identity_mismatch_line_count,\n           COALESCE(s.gross_booked_sales_amount, CAST(0 AS decimal(18,2))) AS gross_booked_sales_amount,\n           COALESCE(s.units_sold, CAST(0 AS bigint)) AS units_sold,\n           CAST(CASE WHEN h.dwh_order_status_valid = 1\n                         AND h.dwh_shipment_status_valid = 1\n                         AND h.dwh_payment_status_valid = 1\n                         AND h.dwh_due_date_valid = 1\n                         AND h.dwh_delivery_date_valid = 1\n                         AND COALESCE(s.sales_line_count, 0) > 0\n                         AND COALESCE(s.identity_mismatch_line_count, 0) = 0\n                     THEN 1 ELSE 0 END AS bit) AS is_order_metric_eligible,\n           CAST(CASE WHEN h.order_status IN ('delivered', 'returned')\n                         AND h.delivered_ts IS NOT NULL\n                         AND h.due_date IS NOT NULL\n                         AND h.dwh_due_date_valid = 1\n                         AND h.dwh_delivery_date_valid = 1\n                         AND COALESCE(s.identity_mismatch_line_count, 0) = 0\n                     THEN 1 ELSE 0 END AS bit) AS is_shipping_sla_eligible,\n           h.dwh_source_load_ts, h.dwh_silver_load_ts, h.dwh_record_hash\n    FROM [lh_retail_silver].[conformed].[fact_order] AS h\n    LEFT JOIN (\n        SELECT order_number,\n               COUNT_BIG(*) AS sales_line_count,\n               SUM(CASE WHEN is_sales_eligible = 1 THEN CAST(1 AS bigint) ELSE CAST(0 AS bigint) END) AS eligible_sales_line_count,\n               SUM(CASE WHEN is_sales_eligible = 1 THEN sales_amount ELSE CAST(0 AS decimal(18,2)) END) AS gross_booked_sales_amount,\n               SUM(CASE WHEN is_sales_eligible = 1 THEN CAST(quantity AS bigint) ELSE CAST(0 AS bigint) END) AS units_sold,\n               MIN(location_key) AS location_key,\n               MIN(customer_entity_key) AS customer_entity_key,\n               SUM(CASE WHEN dq_order_identity_mismatch = 1 THEN CAST(1 AS bigint) ELSE CAST(0 AS bigint) END) AS identity_mismatch_line_count\n        FROM gold_build.fact_sales\n        GROUP BY order_number\n    ) AS s ON s.order_number = h.order_number;"
+            },
+            {
+              "type": "Query",
+              "text": "-- AOV is gross booked sales divided by eligible orders, never by line count.\n-- Return and cancellation amounts remain booked amounts because no refunds\n-- ledger or finance recognition policy exists in the source contract.\nIF OBJECT_ID('gold_build.mart_order_lifecycle', 'U') IS NULL\n    CREATE TABLE gold_build.mart_order_lifecycle AS\n    SELECT order_date,\n           COUNT_BIG(*) AS eligible_order_count,\n           SUM(CASE WHEN order_status = 'created' THEN CAST(1 AS bigint) ELSE CAST(0 AS bigint) END) AS created_order_count,\n           SUM(CASE WHEN order_status = 'packed' THEN CAST(1 AS bigint) ELSE CAST(0 AS bigint) END) AS packed_order_count,\n           SUM(CASE WHEN order_status = 'shipped' THEN CAST(1 AS bigint) ELSE CAST(0 AS bigint) END) AS shipped_order_count,\n           SUM(CASE WHEN order_status = 'delivered' THEN CAST(1 AS bigint) ELSE CAST(0 AS bigint) END) AS delivered_order_count,\n           SUM(CASE WHEN order_status = 'cancelled' THEN CAST(1 AS bigint) ELSE CAST(0 AS bigint) END) AS cancelled_order_count,\n           SUM(CASE WHEN order_status = 'returned' THEN CAST(1 AS bigint) ELSE CAST(0 AS bigint) END) AS returned_order_count,\n           SUM(gross_booked_sales_amount) AS gross_booked_sales_amount,\n           CAST(SUM(gross_booked_sales_amount) / NULLIF(COUNT_BIG(*), 0) AS decimal(18,4)) AS average_order_value,\n           CAST(100.0 * SUM(CASE WHEN order_status = 'cancelled' THEN 1 ELSE 0 END)\n                / NULLIF(COUNT_BIG(*), 0) AS decimal(18,4)) AS cancellation_rate_pct,\n           CAST(100.0 * SUM(CASE WHEN order_status = 'returned' THEN 1 ELSE 0 END)\n                / NULLIF(COUNT_BIG(*), 0) AS decimal(18,4)) AS return_rate_pct\n    FROM gold_build.fact_order\n    WHERE is_order_metric_eligible = 1\n    GROUP BY order_date;"
+            },
+            {
+              "type": "Query",
+              "text": "-- SLA denominator: delivered/returned orders with a valid promised due date.\n-- In-transit and cancelled orders are not silently counted as late deliveries.\nIF OBJECT_ID('gold_build.mart_shipping_sla', 'U') IS NULL\n    CREATE TABLE gold_build.mart_shipping_sla AS\n    SELECT o.order_date, COALESCE(l.delivery_zone, 'unknown') AS delivery_zone,\n           COUNT_BIG(*) AS delivered_order_count,\n           SUM(CASE WHEN CAST(o.delivered_ts AS date) <= o.due_date THEN CAST(1 AS bigint) ELSE CAST(0 AS bigint) END) AS on_time_order_count,\n           SUM(CASE WHEN CAST(o.delivered_ts AS date) > o.due_date THEN CAST(1 AS bigint) ELSE CAST(0 AS bigint) END) AS late_order_count,\n           CAST(100.0 * SUM(CASE WHEN CAST(o.delivered_ts AS date) <= o.due_date THEN 1 ELSE 0 END)\n                / NULLIF(COUNT_BIG(*), 0) AS decimal(18,4)) AS on_time_delivery_rate_pct,\n           CAST(AVG(CAST(DATEDIFF(day, o.order_date, CAST(o.delivered_ts AS date)) AS decimal(18,4)))\n                AS decimal(18,4)) AS average_delivery_days\n    FROM gold_build.fact_order AS o\n    LEFT JOIN gold_build.dim_location AS l ON l.location_key = o.location_key\n    WHERE o.is_order_metric_eligible = 1 AND o.is_shipping_sla_eligible = 1\n    GROUP BY o.order_date, COALESCE(l.delivery_zone, 'unknown');"
+            },
+            {
+              "type": "Query",
+              "text": "-- Counts are current payment states, not transaction/settlement amounts.\nIF OBJECT_ID('gold_build.mart_payment_status', 'U') IS NULL\n    CREATE TABLE gold_build.mart_payment_status AS\n    SELECT order_date, payment_status,\n           COUNT_BIG(*) AS order_count,\n           SUM(gross_booked_sales_amount) AS gross_booked_sales_amount\n    FROM gold_build.fact_order\n    WHERE is_order_metric_eligible = 1\n    GROUP BY order_date, payment_status;"
+            },
+            {
+              "type": "Query",
+              "text": "-- Stable customer entity keys make repeat-order counts SCD2-safe.\nIF OBJECT_ID('gold_build.mart_customer_order_frequency', 'U') IS NULL\n    CREATE TABLE gold_build.mart_customer_order_frequency AS\n    SELECT customer_entity_key,\n           COUNT_BIG(*) AS order_count,\n           SUM(gross_booked_sales_amount) AS gross_booked_sales_amount,\n           MIN(order_date) AS first_order_date,\n           MAX(order_date) AS last_order_date,\n           CAST(CASE WHEN COUNT_BIG(*) >= 2 THEN 1 ELSE 0 END AS bit) AS is_repeat_customer\n    FROM gold_build.fact_order\n    WHERE is_order_metric_eligible = 1 AND customer_entity_key IS NOT NULL\n    GROUP BY customer_entity_key;"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "04:00:00"
+        },
+        "externalReferences": {
+          "connection": "0a85b5ac-b0d0-4686-9de2-c3bf62dac800"
+        },
+        "description": "Builds candidate order state, lifecycle, payment, shipping SLA, and repeat-order marts from full-population headers."
+      },
+      {
+        "name": "BuildSemanticDimensions",
+        "type": "Script",
+        "dependsOn": [
+          {
+            "activity": "BuildGoldOrderMarts",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.04:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": "-- Continuous Gregorian calendar, 2010-2030 inclusive. This supports real\n-- date relationships and YoY calculations even when a day has no orders.\nIF OBJECT_ID('gold_build.dim_date', 'U') IS NULL\n    CREATE TABLE gold_build.dim_date AS\n    SELECT CAST(DATEADD(day, n.value, CAST('2010-01-01' AS date)) AS date) AS calendar_date,\n           YEAR(DATEADD(day, n.value, CAST('2010-01-01' AS date))) AS calendar_year,\n           DATEPART(quarter, DATEADD(day, n.value, CAST('2010-01-01' AS date))) AS calendar_quarter,\n           MONTH(DATEADD(day, n.value, CAST('2010-01-01' AS date))) AS calendar_month,\n           CAST(DATENAME(month, DATEADD(day, n.value, CAST('2010-01-01' AS date))) AS varchar(20)) AS month_name,\n           DAY(DATEADD(day, n.value, CAST('2010-01-01' AS date))) AS day_of_month,\n           DATEFROMPARTS(YEAR(DATEADD(day, n.value, CAST('2010-01-01' AS date))),\n                         MONTH(DATEADD(day, n.value, CAST('2010-01-01' AS date))), 1) AS month_start_date\n    FROM GENERATE_SERIES(0, DATEDIFF(day, CAST('2010-01-01' AS date), CAST('2030-12-31' AS date)), 1) AS n;"
+            },
+            {
+              "type": "Query",
+              "text": "-- A unique stable-entity table for order-grain semantic relationships.\n-- The full dim_customer table continues to hold every SCD2 version.\nIF OBJECT_ID('gold_build.dim_customer_current', 'U') IS NULL\n    CREATE TABLE gold_build.dim_customer_current AS\n    SELECT customer_entity_key, customer_id, customer_business_key,\n           first_name, last_name, country, location_entity_key\n    FROM gold_build.dim_customer\n    WHERE dwh_is_current = 1;"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "04:00:00"
+        },
+        "externalReferences": {
+          "connection": "0a85b5ac-b0d0-4686-9de2-c3bf62dac800"
+        },
+        "description": "Builds candidate continuous date and current-customer dimensions for stable semantic relationships."
+      },
+      {
+        "name": "AuditGoldCandidate",
+        "type": "Script",
+        "dependsOn": [
+          {
+            "activity": "BuildSemanticDimensions",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.04:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": "-- Durable audit snapshot for dashboard trust and pipeline diagnosis. These\n-- figures define the denominators behind every certified order KPI.\nIF OBJECT_ID('gold_build.kpi_audit', 'U') IS NULL\n    CREATE TABLE gold_build.kpi_audit AS\n    SELECT CAST(SYSUTCDATETIME() AS datetime2(6)) AS audited_at_utc,\n           s.sales_line_count, s.distinct_sales_keys,\n           s.eligible_sales_line_count, s.order_identity_mismatch_line_count,\n           s.eligible_gross_booked_sales_amount,\n           o.order_count, o.distinct_order_numbers,\n           o.eligible_order_count, o.orders_without_lines,\n           o.invalid_status_or_date_order_count,\n           o.shipping_sla_eligible_order_count,\n           d.daily_gross_booked_sales_amount,\n           m.monthly_gross_booked_sales_amount,\n           l.lifecycle_eligible_order_count,\n           p.payment_eligible_order_count,\n           sh.shipping_mart_order_count\n    FROM (\n        SELECT COUNT_BIG(*) AS sales_line_count,\n               COUNT(DISTINCT source_sales_key) AS distinct_sales_keys,\n               SUM(CASE WHEN is_sales_eligible = 1 THEN CAST(1 AS bigint) ELSE CAST(0 AS bigint) END) AS eligible_sales_line_count,\n               SUM(CASE WHEN dq_order_identity_mismatch = 1 THEN CAST(1 AS bigint) ELSE CAST(0 AS bigint) END) AS order_identity_mismatch_line_count,\n               SUM(CASE WHEN is_sales_eligible = 1 THEN sales_amount ELSE CAST(0 AS decimal(18,2)) END) AS eligible_gross_booked_sales_amount\n        FROM gold_build.fact_sales\n    ) AS s\n    CROSS JOIN (\n        SELECT COUNT_BIG(*) AS order_count,\n               COUNT(DISTINCT order_number) AS distinct_order_numbers,\n               SUM(CASE WHEN is_order_metric_eligible = 1 THEN CAST(1 AS bigint) ELSE CAST(0 AS bigint) END) AS eligible_order_count,\n               SUM(CASE WHEN sales_line_count = 0 THEN CAST(1 AS bigint) ELSE CAST(0 AS bigint) END) AS orders_without_lines,\n               SUM(CASE WHEN is_order_metric_eligible = 0 THEN CAST(1 AS bigint) ELSE CAST(0 AS bigint) END) AS invalid_status_or_date_order_count,\n               SUM(CASE WHEN is_order_metric_eligible = 1 AND is_shipping_sla_eligible = 1 THEN CAST(1 AS bigint) ELSE CAST(0 AS bigint) END) AS shipping_sla_eligible_order_count\n        FROM gold_build.fact_order\n    ) AS o\n    CROSS JOIN (\n        SELECT SUM(gross_sales_amount) AS daily_gross_booked_sales_amount\n        FROM gold_build.mart_daily_sales\n    ) AS d\n    CROSS JOIN (\n        SELECT SUM(gross_sales_amount) AS monthly_gross_booked_sales_amount\n        FROM gold_build.mart_monthly_sales\n    ) AS m\n    CROSS JOIN (\n        SELECT SUM(eligible_order_count) AS lifecycle_eligible_order_count\n        FROM gold_build.mart_order_lifecycle\n    ) AS l\n    CROSS JOIN (\n        SELECT SUM(order_count) AS payment_eligible_order_count\n        FROM gold_build.mart_payment_status\n    ) AS p\n    CROSS JOIN (\n        SELECT SUM(delivered_order_count) AS shipping_mart_order_count\n        FROM gold_build.mart_shipping_sla\n    ) AS sh;"
+            },
+            {
+              "type": "Query",
+              "text": "-- Fail publication when grain, coverage, or materialized KPI totals disagree.\n-- Controlled dirty source lines are allowed but must stay below 0.01%.\nIF EXISTS (\n    SELECT 1 FROM gold_build.kpi_audit\n    WHERE sales_line_count <> distinct_sales_keys\n       OR order_count <> distinct_order_numbers\n       OR orders_without_lines <> 0\n       OR order_identity_mismatch_line_count > sales_line_count * 0.0001\n       OR ABS(eligible_gross_booked_sales_amount - daily_gross_booked_sales_amount) > 0.01\n       OR ABS(eligible_gross_booked_sales_amount - monthly_gross_booked_sales_amount) > 0.01\n       OR eligible_order_count <> lifecycle_eligible_order_count\n       OR eligible_order_count <> payment_eligible_order_count\n       OR shipping_sla_eligible_order_count <> shipping_mart_order_count\n)\n    RAISERROR('Gold KPI audit failed: grain, identity, coverage, or mart reconciliation differs.', 16, 1);"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "04:00:00"
+        },
+        "externalReferences": {
+          "connection": "0a85b5ac-b0d0-4686-9de2-c3bf62dac800"
+        },
+        "description": "Audits candidate denominators and blocks publication if grain, coverage, revenue, or mart totals disagree."
+      },
+      {
+        "name": "PublishGoldAtomically",
+        "type": "Script",
+        "dependsOn": [
+          {
+            "activity": "AuditGoldCandidate",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.04:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": "IF OBJECT_ID('gold_build.dim_category', 'U') IS NULL RAISERROR('Missing audited Gold candidate: dim_category', 16, 1);\nIF OBJECT_ID('gold_build.dim_customer', 'U') IS NULL RAISERROR('Missing audited Gold candidate: dim_customer', 16, 1);\nIF OBJECT_ID('gold_build.dim_product', 'U') IS NULL RAISERROR('Missing audited Gold candidate: dim_product', 16, 1);\nIF OBJECT_ID('gold_build.dim_location', 'U') IS NULL RAISERROR('Missing audited Gold candidate: dim_location', 16, 1);\nIF OBJECT_ID('gold_build.fact_sales', 'U') IS NULL RAISERROR('Missing audited Gold candidate: fact_sales', 16, 1);\nIF OBJECT_ID('gold_build.mart_daily_sales', 'U') IS NULL RAISERROR('Missing audited Gold candidate: mart_daily_sales', 16, 1);\nIF OBJECT_ID('gold_build.mart_monthly_sales', 'U') IS NULL RAISERROR('Missing audited Gold candidate: mart_monthly_sales', 16, 1);\nIF OBJECT_ID('gold_build.mart_customer_spend', 'U') IS NULL RAISERROR('Missing audited Gold candidate: mart_customer_spend', 16, 1);\nIF OBJECT_ID('gold_build.mart_product_performance', 'U') IS NULL RAISERROR('Missing audited Gold candidate: mart_product_performance', 16, 1);\nIF OBJECT_ID('gold_build.mart_category_performance', 'U') IS NULL RAISERROR('Missing audited Gold candidate: mart_category_performance', 16, 1);\nIF OBJECT_ID('gold_build.mart_geography_sales', 'U') IS NULL RAISERROR('Missing audited Gold candidate: mart_geography_sales', 16, 1);\nIF OBJECT_ID('gold_build.mart_sales_yoy', 'U') IS NULL RAISERROR('Missing audited Gold candidate: mart_sales_yoy', 16, 1);\nIF OBJECT_ID('gold_build.fact_order', 'U') IS NULL RAISERROR('Missing audited Gold candidate: fact_order', 16, 1);\nIF OBJECT_ID('gold_build.mart_order_lifecycle', 'U') IS NULL RAISERROR('Missing audited Gold candidate: mart_order_lifecycle', 16, 1);\nIF OBJECT_ID('gold_build.mart_shipping_sla', 'U') IS NULL RAISERROR('Missing audited Gold candidate: mart_shipping_sla', 16, 1);\nIF OBJECT_ID('gold_build.mart_payment_status', 'U') IS NULL RAISERROR('Missing audited Gold candidate: mart_payment_status', 16, 1);\nIF OBJECT_ID('gold_build.mart_customer_order_frequency', 'U') IS NULL RAISERROR('Missing audited Gold candidate: mart_customer_order_frequency', 16, 1);\nIF OBJECT_ID('gold_build.dim_date', 'U') IS NULL RAISERROR('Missing audited Gold candidate: dim_date', 16, 1);\nIF OBJECT_ID('gold_build.dim_customer_current', 'U') IS NULL RAISERROR('Missing audited Gold candidate: dim_customer_current', 16, 1);\nIF OBJECT_ID('gold_build.kpi_audit', 'U') IS NULL RAISERROR('Missing audited Gold candidate: kpi_audit', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.dim_category') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.dim_category')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.dim_category') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.dim_category')) RAISERROR('Gold schema contract changed: dim_category', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.dim_customer') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.dim_customer')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.dim_customer') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.dim_customer')) RAISERROR('Gold schema contract changed: dim_customer', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.dim_product') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.dim_product')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.dim_product') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.dim_product')) RAISERROR('Gold schema contract changed: dim_product', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.dim_location') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.dim_location')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.dim_location') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.dim_location')) RAISERROR('Gold schema contract changed: dim_location', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.fact_sales') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.fact_sales')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.fact_sales') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.fact_sales')) RAISERROR('Gold schema contract changed: fact_sales', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_daily_sales') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_daily_sales')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_daily_sales') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_daily_sales')) RAISERROR('Gold schema contract changed: mart_daily_sales', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_monthly_sales') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_monthly_sales')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_monthly_sales') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_monthly_sales')) RAISERROR('Gold schema contract changed: mart_monthly_sales', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_customer_spend') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_customer_spend')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_customer_spend') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_customer_spend')) RAISERROR('Gold schema contract changed: mart_customer_spend', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_product_performance') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_product_performance')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_product_performance') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_product_performance')) RAISERROR('Gold schema contract changed: mart_product_performance', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_category_performance') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_category_performance')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_category_performance') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_category_performance')) RAISERROR('Gold schema contract changed: mart_category_performance', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_geography_sales') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_geography_sales')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_geography_sales') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_geography_sales')) RAISERROR('Gold schema contract changed: mart_geography_sales', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_sales_yoy') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_sales_yoy')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_sales_yoy') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_sales_yoy')) RAISERROR('Gold schema contract changed: mart_sales_yoy', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.fact_order') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.fact_order')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.fact_order') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.fact_order')) RAISERROR('Gold schema contract changed: fact_order', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_order_lifecycle') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_order_lifecycle')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_order_lifecycle') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_order_lifecycle')) RAISERROR('Gold schema contract changed: mart_order_lifecycle', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_shipping_sla') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_shipping_sla')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_shipping_sla') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_shipping_sla')) RAISERROR('Gold schema contract changed: mart_shipping_sla', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_payment_status') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_payment_status')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_payment_status') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_payment_status')) RAISERROR('Gold schema contract changed: mart_payment_status', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_customer_order_frequency') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_customer_order_frequency')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.mart_customer_order_frequency') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.mart_customer_order_frequency')) RAISERROR('Gold schema contract changed: mart_customer_order_frequency', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.dim_date') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.dim_date')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.dim_date') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.dim_date')) RAISERROR('Gold schema contract changed: dim_date', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.dim_customer_current') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.dim_customer_current')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.dim_customer_current') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.dim_customer_current')) RAISERROR('Gold schema contract changed: dim_customer_current', 16, 1);\nIF EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.kpi_audit') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.kpi_audit')) OR EXISTS (SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold_build.kpi_audit') EXCEPT SELECT name, column_id, system_type_id, max_length, precision, scale, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID('gold.kpi_audit')) RAISERROR('Gold schema contract changed: kpi_audit', 16, 1);\nBEGIN TRY\n    BEGIN TRANSACTION;\nTRUNCATE TABLE gold.dim_category;\nINSERT INTO gold.dim_category SELECT * FROM gold_build.dim_category;\nTRUNCATE TABLE gold.dim_customer;\nINSERT INTO gold.dim_customer SELECT * FROM gold_build.dim_customer;\nTRUNCATE TABLE gold.dim_product;\nINSERT INTO gold.dim_product SELECT * FROM gold_build.dim_product;\nTRUNCATE TABLE gold.dim_location;\nINSERT INTO gold.dim_location SELECT * FROM gold_build.dim_location;\nTRUNCATE TABLE gold.fact_sales;\nINSERT INTO gold.fact_sales SELECT * FROM gold_build.fact_sales;\nTRUNCATE TABLE gold.mart_daily_sales;\nINSERT INTO gold.mart_daily_sales SELECT * FROM gold_build.mart_daily_sales;\nTRUNCATE TABLE gold.mart_monthly_sales;\nINSERT INTO gold.mart_monthly_sales SELECT * FROM gold_build.mart_monthly_sales;\nTRUNCATE TABLE gold.mart_customer_spend;\nINSERT INTO gold.mart_customer_spend SELECT * FROM gold_build.mart_customer_spend;\nTRUNCATE TABLE gold.mart_product_performance;\nINSERT INTO gold.mart_product_performance SELECT * FROM gold_build.mart_product_performance;\nTRUNCATE TABLE gold.mart_category_performance;\nINSERT INTO gold.mart_category_performance SELECT * FROM gold_build.mart_category_performance;\nTRUNCATE TABLE gold.mart_geography_sales;\nINSERT INTO gold.mart_geography_sales SELECT * FROM gold_build.mart_geography_sales;\nTRUNCATE TABLE gold.mart_sales_yoy;\nINSERT INTO gold.mart_sales_yoy SELECT * FROM gold_build.mart_sales_yoy;\nTRUNCATE TABLE gold.fact_order;\nINSERT INTO gold.fact_order SELECT * FROM gold_build.fact_order;\nTRUNCATE TABLE gold.mart_order_lifecycle;\nINSERT INTO gold.mart_order_lifecycle SELECT * FROM gold_build.mart_order_lifecycle;\nTRUNCATE TABLE gold.mart_shipping_sla;\nINSERT INTO gold.mart_shipping_sla SELECT * FROM gold_build.mart_shipping_sla;\nTRUNCATE TABLE gold.mart_payment_status;\nINSERT INTO gold.mart_payment_status SELECT * FROM gold_build.mart_payment_status;\nTRUNCATE TABLE gold.mart_customer_order_frequency;\nINSERT INTO gold.mart_customer_order_frequency SELECT * FROM gold_build.mart_customer_order_frequency;\nTRUNCATE TABLE gold.dim_date;\nINSERT INTO gold.dim_date SELECT * FROM gold_build.dim_date;\nTRUNCATE TABLE gold.dim_customer_current;\nINSERT INTO gold.dim_customer_current SELECT * FROM gold_build.dim_customer_current;\nTRUNCATE TABLE gold.kpi_audit;\nINSERT INTO gold.kpi_audit SELECT * FROM gold_build.kpi_audit;\n    COMMIT TRANSACTION;\nEND TRY\nBEGIN CATCH\n    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;\n    THROW;\nEND CATCH;"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "04:00:00"
+        },
+        "externalReferences": {
+          "connection": "0a85b5ac-b0d0-4686-9de2-c3bf62dac800"
+        },
+        "description": "Copies audited candidate rows into existing Gold tables in one rollback-capable transaction; table identities remain stable."
+      },
+      {
+        "name": "VerifyPublishedGold",
+        "type": "Script",
+        "dependsOn": [
+          {
+            "activity": "PublishGoldAtomically",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.04:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "scripts": [
+            {
+              "type": "Query",
+              "text": "IF (SELECT COUNT(*) FROM gold.kpi_audit) <> 1 RAISERROR('Published Gold audit must contain exactly one row.', 16, 1); IF EXISTS (SELECT * FROM gold.kpi_audit EXCEPT SELECT * FROM gold_build.kpi_audit) OR EXISTS (SELECT * FROM gold_build.kpi_audit EXCEPT SELECT * FROM gold.kpi_audit) RAISERROR('Published Gold audit differs from audited candidate.', 16, 1);"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "04:00:00"
+        },
+        "externalReferences": {
+          "connection": "0a85b5ac-b0d0-4686-9de2-c3bf62dac800"
+        },
+        "description": "Confirms the committed serving audit row exactly matches the candidate that passed the KPI gate."
+      }
+    ]
+  }
+}

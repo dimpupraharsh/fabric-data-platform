@@ -1,0 +1,49 @@
+{
+  "properties": {
+    "description": "Runs the governed PostgreSQL order-header source through the shared watermark child. Initial load creates the complete-population order denominator; later runs append only changed headers with a committed manifest.",
+    "activities": [
+      {
+        "name": "RunOrderHeaderWatermark",
+        "type": "ExecutePipeline",
+        "dependsOn": [],
+        "policy": {
+          "secureInput": false
+        },
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "d3adcc89-45e2-417b-8af6-b39cde4c4893",
+            "type": "PipelineReference"
+          },
+          "parameters": {
+            "source_object_id": {
+              "value": "@string(1007)",
+              "type": "Expression"
+            },
+            "source_schema": {
+              "value": "@string('retail_oi')",
+              "type": "Expression"
+            },
+            "source_table": {
+              "value": "@string('order_header')",
+              "type": "Expression"
+            },
+            "bronze_target": {
+              "value": "@string('pg_order_header')",
+              "type": "Expression"
+            },
+            "watermark_column": {
+              "value": "@string('dwh_load_ts')",
+              "type": "Expression"
+            },
+            "tie_breaker_column": {
+              "value": "@string('anchor_sales_key')",
+              "type": "Expression"
+            }
+          },
+          "waitOnCompletion": true
+        },
+        "description": "Loads metadata object 1007 through the bounded PostgreSQL watermark child and waits for its count validation, manifest, and checkpoint commit."
+      }
+    ]
+  }
+}

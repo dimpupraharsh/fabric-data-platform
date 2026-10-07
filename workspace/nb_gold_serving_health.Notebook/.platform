@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "nb_gold_serving_health",
+    "description": "After Gold publication, compares its KPI audit and publication timestamp with the live semantic model, logs the verdict in the control Warehouse, and fails the daily pipeline on stale or mismatched serving data."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "2305d7d9-966a-4799-8dd9-29a32381b98b"
+  }
+}

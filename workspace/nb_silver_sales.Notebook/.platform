@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "nb_silver_sales",
+    "description": "Builds the line-item sales fact, resolves SCD dimension versions as of order date, flags soft data defects, rejects hard reference failures, and merges on source sales key."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "6abffcba-c1f6-41ff-8919-d32398ab0c83"
+  }
+}

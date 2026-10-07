@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "nb_bronze_batch_guard",
+    "description": "Creates and checks approved Bronze landing targets, enforces exact batch counts and schema observations, and writes immutable manifests before checkpoint commit."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "c58fda4b-7307-4472-9363-d97aa25e1fea"
+  }
+}

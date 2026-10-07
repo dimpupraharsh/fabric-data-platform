@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "pl_bronze_pg_watermark",
+    "description": "Incremental PostgreSQL child: lock the object, freeze inclusive dwh_load_ts/key bounds, prepare a batch, copy its delta with lineage, validate and write a manifest, then commit. Failures do not advance the watermark; retries replay the interval."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "d3adcc89-45e2-417b-8af6-b39cde4c4893"
+  }
+}

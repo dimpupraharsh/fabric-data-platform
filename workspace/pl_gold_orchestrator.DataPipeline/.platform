@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "pl_gold_orchestrator",
+    "description": "Builds and audits Gold candidates, then transactionally replaces live rows without dropping semantic-model tables. Gross booked sales is not net revenue."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "bc238ab9-2ca8-4754-b8dc-e2e2050b7e1a"
+  }
+}

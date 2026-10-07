@@ -1,0 +1,29 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ManageOnlyRetailTerraformStateBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket", "s3:ListBucket", "s3:ListBucketVersions",
+        "s3:GetBucket*", "s3:GetEncryptionConfiguration", "s3:GetLifecycleConfiguration",
+        "s3:GetAccelerateConfiguration", "s3:GetReplicationConfiguration",
+        "s3:PutBucketTagging", "s3:PutBucketVersioning", "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketOwnershipControls", "s3:PutEncryptionConfiguration", "s3:PutBucketPolicy"
+      ],
+      "Resource": "arn:aws:s3:::retail-oi-terraform-state-981450247725"
+    },
+    {
+      "Sid": "ReadWriteOnlyFoundationState",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:GetObjectVersion", "s3:PutObject"],
+      "Resource": "arn:aws:s3:::retail-oi-terraform-state-981450247725/foundation/*"
+    },
+    {
+      "Sid": "DeleteOnlyTerraformLockFiles",
+      "Effect": "Allow",
+      "Action": "s3:DeleteObject",
+      "Resource": "arn:aws:s3:::retail-oi-terraform-state-981450247725/foundation/*.tflock"
+    }
+  ]
+}

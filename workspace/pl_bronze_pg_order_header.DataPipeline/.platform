@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "pl_bronze_pg_order_header",
+    "description": "Runs the governed PostgreSQL order-header source through the shared watermark child. Initial load creates the complete-population order denominator; later runs append only changed headers with a committed manifest."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "373eb164-7433-4409-b385-d3f672c851f6"
+  }
+}

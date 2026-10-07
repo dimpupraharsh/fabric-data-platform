@@ -4,75 +4,103 @@
 
 A retail analytics engineering platform developed at SaleFisher under a Data Engineer
 contract around a 15-million-line
-transactional workload, with metadata-driven ingestion, historical dimensions,
-audited Gold publication and a Direct Lake semantic model.
+transactional workload. It combines metadata-driven ingestion, historical
+dimensions, quality-gated Warehouse publishing and a Direct Lake semantic model.
 
-## Explore the Project
+> **Status, 7 October 2026:** source code and recorded verification evidence are
+> available. The legacy analytics workspace has a recorded Gold publication of
+> 15,001,016 sales lines. Dev/Test delivery has recorded acceptance results.
+> The new Production workspace has four empty foundation containers; migration
+> and three data-correctness findings remain open. This is not a production SLA
+> or a claim of commercial adoption. See [implementation status](docs/implementation-status.md).
 
-**[Browse the complete implementation](https://github.com/dimpupraharsh/fabric-data-platform/tree/setup/enterprise-fabric-cicd)**
+## Start Here
 
-The default branch hosts the project overview and documentation. Application
-definitions and delivery tooling remain on the implementation branch while
-[PR #1](https://github.com/dimpupraharsh/fabric-data-platform/pull/1) addresses
-its outstanding correctness/release gates. Documentation publication is not a
-Production deployment and does not bypass that review.
+- [Architecture and flow diagrams](docs/architecture.md)
+- [Walkthrough: source data to reporting](docs/project-walkthrough.md)
+- [Measures, reporting marts and limitations](docs/metrics.md)
+- [Safe local setup and source change generation](docs/getting-started.md)
+- [CI/CD and infrastructure ownership](docs/delivery.md)
+- [Documentation index](docs/README.md)
 
-| Start here | What you will find |
-| --- | --- |
-| [Architecture](docs/architecture.md) | Data flow, metadata control and CI/CD diagrams |
-| [Walkthrough](docs/project-walkthrough.md) | How source records become analytical datasets |
-| [Metrics](docs/metrics.md) | 18 DAX measures, 11 Gold marts and their limitations |
-| [Implementation status](docs/implementation-status.md) | Recorded results versus remaining work |
-| [Setup guide](docs/getting-started.md) | Safe source tools and credential handling |
-| [Debugging](docs/debugging.md) | Trace failures from source to semantic serving |
-| [Documentation index](docs/README.md) | Runbooks, delivery, cutover and editable draw.io diagram |
-
-## Source to Reporting
+## Data Flow
 
 ```mermaid
 flowchart LR
     PG[(PostgreSQL<br/>Transactional source)] --> GW[Windows gateway]
     S3[(AWS S3<br/>Geography and fulfilment)] --> ING[Metadata-driven ingestion]
     GW --> ING
-    CTL[(Control Warehouse)] -.-> ING
-    ING --> B[(Bronze Lakehouse<br/>Raw data and lineage)]
+    CTL[(Control Warehouse<br/>Configuration and run state)] -.-> ING
+    ING --> B[(Bronze Lakehouse<br/>Raw snapshots and deltas)]
     B --> S[(Silver Lakehouse<br/>Conformed facts and SCD2)]
     S --> G[(Gold Warehouse<br/>Audited facts and marts)]
-    G --> SM[Direct Lake model<br/>18 DAX measures]
-    SM -. "Consumer path; no deployed report claimed" .-> BI[Power BI]
+    G --> SM[Direct Lake semantic model<br/>18 DAX measures]
+    SM -. "Consumer path; no report artifact claimed" .-> BI[Power BI]
 ```
 
-## Key Engineering Patterns
+## Engineering Decisions
 
-- PostgreSQL watermark-based incremental ingestion and S3 full-file snapshots.
-- Metadata-driven parent/child pipelines with a separate control Warehouse.
-- PySpark/Delta deduplication, SCD Type 2 history and late-arrival processing.
-- Candidate quality gates and transactional Gold publication.
-- Explicit metric eligibility and Warehouse/model reconciliation.
-- Terraform infrastructure and guarded GitHub Actions Dev/Test delivery.
+| Problem | Implementation |
+| --- | --- |
+| Repeated source-specific ingestion | Metadata configuration, parent/child pipelines and separate control state |
+| Frequent transactional updates | PostgreSQL watermark-based extraction using `dwh_load_ts` |
+| Slowly changing references | S3 full-file snapshots with lineage, not row-level CDC |
+| Historical attribute changes | PySpark/Delta SCD Type 2 dimensions and time-aware fact matching |
+| Dirty and late data | Validation, rejection handling, deduplication and controlled test inputs |
+| Failed reporting refresh | Candidate Gold build, audit gate and rollback-capable publication |
+| Inconsistent report totals | Warehouse audit versus semantic-model reconciliation |
+| Uncontrolled releases | Versioned definitions, migrations, Dev/Test validation and gated promotion |
 
-## Evidence and Limitations
+A unit test is not a cloud integration test, and a passing fixture is not proof
+of every replay or failure case. Open findings are documented, not hidden.
 
-The recorded legacy Gold publication contains **15,001,016 sales lines** and
-**5,007,874 orders**. This audit was published on 29 September 2026 and read on
-3 October; it is not a fresh data count. Recorded Test acceptance includes
-12 Silver checks and 10 Gold SQL stages, with explicit fixture limitations.
+## Repository Map
 
-As reviewed for publication on **7 October 2026**, three data-correctness
-findings remain open. The new Production workspace has four empty foundation
-containers; legacy data are preserved pending verified migration and cutover.
-No commercial adoption, cost savings, production SLA or deployed Power BI
-report is claimed. See [status](docs/implementation-status.md).
+```text
+workspace/                  Native deployable Fabric items and TMDL
+fabric/control_warehouse/   Control-plane SQL reference and bootstrap scripts
+fabric/gold_warehouse/      Gold SQL and metric audit definitions
+fabric/notebooks/src/       Readable sources; workspace/ is release authority
+postgres/                   Owned source setup, staging, seed and order-header SQL
+scripts/                    Source generators, validators and publication checks
+migrations/                 Versioned deployment migrations
+deploy/                     Release, migration and smoke-test tooling
+infra/                      Fabric, identity and private S3 Terraform state setup
+config/                     Environment bindings and disabled Production gates
+tests/                      Credential-free definition and contract tests
+.github/                    CI and explicitly dispatched release workflows
+docs/                       Architecture, runbooks, status and editable diagram
+```
 
-## Implementation Layout
+Seed CSVs, generated datasets, private evidence, credentials, Terraform state
+and personal documents are intentionally excluded. See [security](SECURITY.md).
 
-The [implementation branch](https://github.com/dimpupraharsh/fabric-data-platform/tree/setup/enterprise-fabric-cicd)
-contains native Fabric items under `workspace/`, PostgreSQL setup under
-`postgres/`, source tools under `scripts/`, control/Gold SQL under `fabric/`,
-versioned migrations, Terraform, environment bindings, tests and delivery workflows.
-Use its README for validation and execution instructions.
+## Validate Without Cloud Access
 
-Private CSVs, generated datasets, source dumps, credentials, Terraform state,
-runtime evidence and personal documents are intentionally excluded.
-See [security](SECURITY.md). Code uses the [MIT licence](LICENSE); no third-party
-seed data are redistributed.
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python deploy/check_repository.py
+python scripts/check_publication.py
+pytest -q
+```
+
+Warehouse SQL tooling uses ODBC Driver 18. Spark/Delta transformations execute
+in Fabric, not this local validation environment. These commands do not ingest,
+deploy, reset watermarks or enable schedules.
+
+## Delivery
+
+Terraform manages stable infrastructure. GitHub Actions plus `fabric-cicd`/REST
+publishes definitions. Fabric runs data processing. Git does not contain or
+migrate Lakehouse/Warehouse business data. Production releases remain fail-closed.
+
+The implementation is reviewed in [PR #1](https://github.com/dimpupraharsh/fabric-data-platform/pull/1).
+Do not bypass its outstanding checks or reviews. See [contributing](CONTRIBUTING.md),
+[release runbook](docs/release-runbook.md) and [Production cutover](docs/production-workspace-cutover.md).
+
+## Licence
+
+Code uses the [MIT licence](LICENSE). Third-party seed datasets are not
+redistributed; their licensing must be checked independently.

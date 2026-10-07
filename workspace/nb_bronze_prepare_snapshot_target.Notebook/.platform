@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "nb_bronze_prepare_snapshot_target",
+    "description": "Adds nullable ingest-lineage columns to approved Bronze snapshot tables and clears only rows from the supplied retry batch; existing baseline data is preserved."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "e8453a82-24a9-4bf5-9fa2-82faaef77da6"
+  }
+}

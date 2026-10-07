@@ -27,8 +27,8 @@ company-wide denominators. Stable entity keys collapse SCD2 versions for rollups
 | Paid Orders | Eligible orders currently paid |
 | Paid Order Share | Paid / eligible orders, not payment attempt success |
 
-Authority: [sales TMDL](https://github.com/dimpupraharsh/fabric-data-platform/blob/setup/enterprise-fabric-cicd/workspace/sm_retail_order_intelligence.SemanticModel/definition/tables/fact_sales.tmdl)
-and [order TMDL](https://github.com/dimpupraharsh/fabric-data-platform/blob/setup/enterprise-fabric-cicd/workspace/sm_retail_order_intelligence.SemanticModel/definition/tables/fact_order.tmdl).
+Authority: [sales TMDL](../workspace/sm_retail_order_intelligence.SemanticModel/definition/tables/fact_sales.tmdl)
+and [order TMDL](../workspace/sm_retail_order_intelligence.SemanticModel/definition/tables/fact_order.tmdl).
 
 ## The 11 Gold Marts
 
@@ -46,8 +46,8 @@ and [order TMDL](https://github.com/dimpupraharsh/fabric-data-platform/blob/setu
 | `mart_payment_status` | Current payment-status counts and associated booked sales |
 | `mart_customer_order_frequency` | Order counts, first/latest dates, repeat flags |
 
-Definitions: [sales SQL](https://github.com/dimpupraharsh/fabric-data-platform/blob/setup/enterprise-fabric-cicd/fabric/gold_warehouse/12_create_sales_marts.sql)
-and [order SQL](https://github.com/dimpupraharsh/fabric-data-platform/blob/setup/enterprise-fabric-cicd/fabric/gold_warehouse/15_create_order_marts.sql).
+Definitions: [sales SQL](../fabric/gold_warehouse/12_create_sales_marts.sql)
+and [order SQL](../fabric/gold_warehouse/15_create_order_marts.sql).
 These are reference building blocks. The deployed pipeline manages candidate
 rebuild/publication; create-if-absent scripts alone do not refresh existing tables.
 

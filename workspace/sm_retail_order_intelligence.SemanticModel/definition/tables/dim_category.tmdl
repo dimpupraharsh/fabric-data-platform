@@ -1,0 +1,44 @@
+table dim_category
+	lineageTag: 7e3b5656-fc1d-4d8b-81cf-e1f6209ce9c9
+	sourceLineageTag: [gold].[dim_category]
+
+	column category_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: dc8b2405-04e1-402a-99f6-eb85250dd50a
+		sourceLineageTag: category_key
+		summarizeBy: sum
+		sourceColumn: category_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column category
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: dfd4d1cd-5389-465a-b1d7-2f208ba7d8f3
+		sourceLineageTag: category
+		summarizeBy: none
+		sourceColumn: category
+
+		annotation SummarizationSetBy = Automatic
+
+	column subcategory
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: 36f8b8f3-e500-492f-b362-737b69c9f2ac
+		sourceLineageTag: subcategory
+		summarizeBy: none
+		sourceColumn: subcategory
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_category = entity
+		mode: directLake
+		source
+			entityName: dim_category
+			schemaName: gold
+			expressionSource: DatabaseQuery
+
+	annotation PBI_ResultType = Table
+

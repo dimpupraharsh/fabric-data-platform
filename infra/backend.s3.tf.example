@@ -1,0 +1,5 @@
+# Copy this into each infrastructure root only after the bucket is verified.
+# Never put access keys here. Use AWS SSO/profile locally and GitHub OIDC in CI.
+terraform {
+  backend "s3" {}
+}

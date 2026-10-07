@@ -1,0 +1,333 @@
+/// One row per source sales line. Eligibility excludes invalid line arithmetic and dates.
+table fact_sales
+	lineageTag: 4d308858-9530-499c-8708-2be45e09e78f
+	sourceLineageTag: [gold].[fact_sales]
+
+	/// Booked line revenue, excluding lines that fail the Gold KPI eligibility rules.
+	measure 'Gross Booked Sales' = CALCULATE(SUM('fact_sales'[sales_amount]), 'fact_sales'[is_sales_eligible] = TRUE())
+		formatString: #,0.00
+
+	/// Quantity sold on eligible sales lines.
+	measure 'Units Sold' = CALCULATE(SUM('fact_sales'[quantity]), 'fact_sales'[is_sales_eligible] = TRUE())
+		formatString: #,0
+
+	/// Count of eligible sales lines, not orders.
+	measure 'Sales Lines' = CALCULATE(COUNTROWS('fact_sales'), 'fact_sales'[is_sales_eligible] = TRUE())
+		formatString: #,0
+
+	/// Revenue per unit on eligible sales lines.
+	measure 'Average Selling Price' = DIVIDE([Gross Booked Sales], [Units Sold])
+		formatString: #,0.00
+
+	/// Booked revenue for equivalent prior-year dates; blank without a date selection.
+	measure 'Prior Year Gross Booked Sales' = IF(ISFILTERED('dim_date'), CALCULATE([Gross Booked Sales], SAMEPERIODLASTYEAR('dim_date'[calendar_date])))
+		formatString: #,0.00
+
+	/// Exploratory date-aligned YoY; use completed years for the certified annual KPI.
+	measure 'Gross Booked Sales YoY %' = IF(ISFILTERED('dim_date'), DIVIDE([Gross Booked Sales] - [Prior Year Gross Booked Sales], [Prior Year Gross Booked Sales]))
+		formatString: 0.0%;-0.0%;0.0%
+
+	column sales_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 662f32c2-c90c-4ca8-bbfc-032e2be0a877
+		sourceLineageTag: sales_key
+		summarizeBy: sum
+		sourceColumn: sales_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column source_sales_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 1c3fbbe7-5810-47c4-af42-945bda9d6e81
+		sourceLineageTag: source_sales_key
+		summarizeBy: sum
+		sourceColumn: source_sales_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column order_number
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: 250dd46f-85f6-4cef-9bc6-529ac3d1f85c
+		sourceLineageTag: order_number
+		summarizeBy: none
+		sourceColumn: order_number
+
+		annotation SummarizationSetBy = Automatic
+
+	column customer_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 342eff6d-6c88-48b6-a718-16e2ff8ce4c3
+		sourceLineageTag: customer_key
+		summarizeBy: sum
+		sourceColumn: customer_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column customer_entity_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: f2ac323c-73cc-4938-b9fe-9cb4512efc32
+		sourceLineageTag: customer_entity_key
+		summarizeBy: sum
+		sourceColumn: customer_entity_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column product_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 03a06ca8-c0f2-41c5-9765-8f524ebfd6be
+		sourceLineageTag: product_key
+		summarizeBy: sum
+		sourceColumn: product_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column product_entity_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 35e05ce0-e099-4c0c-b98b-cfc4c92c34a3
+		sourceLineageTag: product_entity_key
+		summarizeBy: sum
+		sourceColumn: product_entity_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column category_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 36f5440a-58a2-4c6a-a1c4-aab1bb08072a
+		sourceLineageTag: category_key
+		summarizeBy: sum
+		sourceColumn: category_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column location_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 416d9848-6728-4dd6-903d-452434b7ab78
+		sourceLineageTag: location_key
+		summarizeBy: sum
+		sourceColumn: location_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column location_entity_key
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: d246021b-b6e4-441b-95ea-fc43487cc357
+		sourceLineageTag: location_entity_key
+		summarizeBy: sum
+		sourceColumn: location_entity_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column customer_id
+		dataType: int64
+		formatString: 0
+		sourceProviderType: int
+		lineageTag: d53bd5d6-a3ad-44ad-8e7e-e9e3800e2e9c
+		sourceLineageTag: customer_id
+		summarizeBy: sum
+		sourceColumn: customer_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column product_business_key
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: b6a6073a-7fa4-4e77-be7c-3809f6864586
+		sourceLineageTag: product_business_key
+		summarizeBy: none
+		sourceColumn: product_business_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column order_date
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: date
+		lineageTag: 379de72d-4e15-4b7f-aaf9-be8aba6c6fbe
+		sourceLineageTag: order_date
+		summarizeBy: none
+		sourceColumn: order_date
+
+		annotation SummarizationSetBy = Automatic
+
+	column ship_date
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: date
+		lineageTag: 67f9e391-a735-4658-9051-59e115bf455d
+		sourceLineageTag: ship_date
+		summarizeBy: none
+		sourceColumn: ship_date
+
+		annotation SummarizationSetBy = Automatic
+
+	column due_date
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: date
+		lineageTag: 32384e74-df7d-4d0a-a8ff-53d98b5b3fd0
+		sourceLineageTag: due_date
+		summarizeBy: none
+		sourceColumn: due_date
+
+		annotation SummarizationSetBy = Automatic
+
+	column sales_amount
+		dataType: double
+		sourceProviderType: decimal(18, 2)
+		lineageTag: 818fa1db-46a2-47d6-83fa-b00653eea037
+		sourceLineageTag: sales_amount
+		summarizeBy: sum
+		sourceColumn: sales_amount
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column quantity
+		dataType: int64
+		formatString: 0
+		sourceProviderType: int
+		lineageTag: f35e8233-9735-41bc-8dbb-a0d06416c4d5
+		sourceLineageTag: quantity
+		summarizeBy: sum
+		sourceColumn: quantity
+
+		annotation SummarizationSetBy = Automatic
+
+	column unit_price
+		dataType: double
+		sourceProviderType: decimal(18, 2)
+		lineageTag: 31c6f0da-043b-46ee-a8dc-a9dd3087ae3d
+		sourceLineageTag: unit_price
+		summarizeBy: sum
+		sourceColumn: unit_price
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column dq_ship_before_order
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		sourceProviderType: bit
+		lineageTag: 7d92b70d-0e94-497d-9313-8995c2ae9e5f
+		sourceLineageTag: dq_ship_before_order
+		summarizeBy: none
+		sourceColumn: dq_ship_before_order
+
+		annotation SummarizationSetBy = Automatic
+
+	column dq_due_before_order
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		sourceProviderType: bit
+		lineageTag: 4e9145f9-e0e4-4bbf-96b2-d935497cb64a
+		sourceLineageTag: dq_due_before_order
+		summarizeBy: none
+		sourceColumn: dq_due_before_order
+
+		annotation SummarizationSetBy = Automatic
+
+	column dq_sales_amount_mismatch
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		sourceProviderType: bit
+		lineageTag: 303268e1-2fd3-4cb8-9fb9-c2def8b5fb3a
+		sourceLineageTag: dq_sales_amount_mismatch
+		summarizeBy: none
+		sourceColumn: dq_sales_amount_mismatch
+
+		annotation SummarizationSetBy = Automatic
+
+	column dwh_dq_status
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: c158ff66-3162-4b8d-88b8-21fc2d9370b0
+		sourceLineageTag: dwh_dq_status
+		summarizeBy: none
+		sourceColumn: dwh_dq_status
+
+		annotation SummarizationSetBy = Automatic
+
+	column dq_order_identity_mismatch
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		sourceProviderType: bit
+		lineageTag: 2492f651-674e-4272-a5e5-aa325aa81144
+		sourceLineageTag: dq_order_identity_mismatch
+		summarizeBy: none
+		sourceColumn: dq_order_identity_mismatch
+
+		annotation SummarizationSetBy = Automatic
+
+	column is_sales_eligible
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		sourceProviderType: bit
+		lineageTag: dea6eeb3-ca5e-414f-b9d4-d2e903446ec1
+		sourceLineageTag: is_sales_eligible
+		summarizeBy: none
+		sourceColumn: is_sales_eligible
+
+		annotation SummarizationSetBy = Automatic
+
+	column dwh_source_load_ts
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: datetime2
+		lineageTag: f241330c-e32a-4138-bd65-c263d9dde0d4
+		sourceLineageTag: dwh_source_load_ts
+		summarizeBy: none
+		sourceColumn: dwh_source_load_ts
+
+		annotation SummarizationSetBy = Automatic
+
+	column dwh_silver_load_ts
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: datetime2
+		lineageTag: 4c330502-8c21-44e7-9efb-985aa6f29634
+		sourceLineageTag: dwh_silver_load_ts
+		summarizeBy: none
+		sourceColumn: dwh_silver_load_ts
+
+		annotation SummarizationSetBy = Automatic
+
+	column dwh_record_hash
+		dataType: string
+		sourceProviderType: varchar(8000)
+		lineageTag: dbffbf94-785c-45d2-b84e-ee7631fb0f97
+		sourceLineageTag: dwh_record_hash
+		summarizeBy: none
+		sourceColumn: dwh_record_hash
+
+		annotation SummarizationSetBy = Automatic
+
+	partition fact_sales = entity
+		mode: directLake
+		source
+			entityName: fact_sales
+			schemaName: gold
+			expressionSource: DatabaseQuery
+
+	annotation PBI_ResultType = Table
+

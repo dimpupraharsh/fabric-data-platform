@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "nb_silver_order_header",
+    "description": "Conforms complete-population PostgreSQL order headers into one Silver row per order, preserving current status, delivery/payment times, source lineage, and validity flags."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "2cc8ba3a-17d3-4fd3-a760-91fd15119995"
+  }
+}

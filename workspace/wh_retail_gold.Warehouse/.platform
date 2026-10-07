@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Warehouse",
+    "displayName": "wh_retail_gold",
+    "description": "Business-facing Gold Warehouse sourced only from conformed Silver. Hosts SCD-aware dimensions, line-item sales, and certified gross-sales marts. Order, fulfillment, lifecycle, and payment KPIs are gated pending source identity repair."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "95a23529-d4a8-42cc-8785-8a7d36fe4ac1"
+  }
+}

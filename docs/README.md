@@ -1,9 +1,5 @@
 # Documentation Index
 
-This default-branch documentation describes the
-[implementation branch](https://github.com/dimpupraharsh/fabric-data-platform/tree/setup/enterprise-fabric-cicd).
-Execution instructions require checking out that branch; they do not deploy from this overview.
-
 ## Understand the Project
 
 | Document | Purpose |
@@ -12,7 +8,7 @@ Execution instructions require checking out that branch; they do not deploy from
 | [Walkthrough](project-walkthrough.md) | Source-to-report explanation and example |
 | [Metrics](metrics.md) | Actual DAX measures, Gold marts and limitations |
 | [Status](implementation-status.md) | Recorded outcomes versus open work |
-| [Asset catalogue](https://github.com/dimpupraharsh/fabric-data-platform/blob/setup/enterprise-fabric-cicd/docs/asset-catalog.md) | Saved item descriptions, pipeline parameters, variables and activities |
+| [Asset catalogue](asset-catalog.md) | Saved item descriptions, pipeline parameters, variables and activities |
 
 ## Run and Maintain It
 
