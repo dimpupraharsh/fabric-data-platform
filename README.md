@@ -2,7 +2,8 @@
 
 **Microsoft Fabric | PostgreSQL | AWS S3 | PySpark | Delta Lake | Terraform | GitHub Actions**
 
-A retail analytics engineering portfolio built around a 15-million-line
+A retail analytics engineering platform developed at SaleFisher under a Data Engineer
+contract around a 15-million-line
 transactional workload, with metadata-driven ingestion, historical dimensions,
 audited Gold publication and a Direct Lake semantic model.
 

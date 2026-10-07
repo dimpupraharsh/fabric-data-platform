@@ -27,6 +27,6 @@ Read [readiness blockers](production-readiness-blockers.md) and
 [business acceptance](business-acceptance-runbook.md). Keep Production gates
 disabled and do not close review findings because CI passes.
 
-Supported portfolio claims concern scale, implemented components and bounded
+Supported implementation outcomes concern scale, implemented components and bounded
 tests. Cost savings, adoption, financial impact and universal exactly-once
 behaviour are not established. Generated sales totals are not business impact.
