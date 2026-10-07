@@ -1,10 +1,10 @@
-# Safe Setup and Source Simulation
+# Safe Setup and Source Change Generation
 
 ## Read Before Running
 
 This repository contains code, not source data or cloud account access.
 CRM/ERP seed CSVs are not redistributed. You supply licensed/private inputs
-and your own connections. Validation is safe; source rebuilds, simulations,
+and your own connections. Validation is safe; source rebuilds, generated changes,
 S3 uploads and cloud releases are write operations requiring explicit intent.
 
 ## Local Dependencies
@@ -77,7 +77,7 @@ python scripts/validate_pg_incremental_changes.py \
 The DSN comes from `POSTGRES_DSN`. Inserts can include controlled duplicates;
 actual committed counts come from the run log, not assumptions about arguments.
 Use the Fabric committed boundary for validation, not a stale source-side
-simulation watermark. Source tools must not advance Fabric checkpoints.
+source-generation watermark. Source tools must not advance Fabric checkpoints.
 
 ## S3 Reference Files
 
@@ -109,6 +109,6 @@ not replace bucket-policy and public-access-block verification.
 Do not run every bootstrap/reference SQL file in numerical order against an
 existing Warehouse. Some files retire legacy models or initialize state.
 Use [the release runbook](release-runbook.md) and versioned migrations.
-Environment IDs in this portfolio are original project bindings; do not reuse
+Environment IDs in this repository are original deployment bindings; do not reuse
 them for another tenant. Provision/rebind connectors and Warehouse schemas
 separately. CI validates definitions; it does not grant cloud access.

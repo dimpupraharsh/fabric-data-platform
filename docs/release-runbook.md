@@ -89,7 +89,7 @@ passed the hardened Dev -> Test release at commit
 migrations, definition publication, binding/schema audits, all nine metadata
 control-contract checks and the bounded connector probe. Dev probe job:
 `83f29577-696f-4c8e-b0be-a9036382ba52`; Test probe job:
-`69d5e005-3284-4a7d-b115-80afa80984a6`. Each probe expected one synthetic row,
+`69d5e005-3284-4a7d-b115-80afa80984a6`. Each probe expected one generated test row,
 checked four S3 files and performed zero ingestion checkpoint updates. The later
 runner pin and metadata inventory update do not constitute a Production release.
 
@@ -111,7 +111,7 @@ the existing Production schedule; Dev/Test schedule files are never published.
 
 ## Governance Limits
 
-This is a single-owner portfolio repository. Production environment approval is
+This repository currently has one owner. Production environment approval is
 configured, but independent separation of duties requires another trusted reviewer.
 Trial capacity does not provide paid-production capacity guarantees. Gateway
 testing requires the Mac PostgreSQL container and Windows gateway VM online.

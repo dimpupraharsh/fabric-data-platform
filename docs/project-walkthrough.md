@@ -5,7 +5,7 @@
 PostgreSQL contains customers, products, sales lines, order headers and status
 events. AWS S3 contains geography, delivery zones and warehouse coverage.
 PostgreSQL says what happened; S3 supplies geography and fulfilment context.
-Private CRM/ERP CSVs seed staging before operational tables. Source simulation
+Private CRM/ERP CSVs seed staging before operational tables. Source-change generation
 is an owned-project tool, not a claim that analytics engineers normally write
 to application production databases.
 

@@ -13,7 +13,7 @@ privately. Do not include a working exploit against someone else's cloud account
   Removing a file does not revoke a credential or erase Git history.
 - The publication scanner is a defence in depth, not a guarantee of no secrets.
 - Workspace IDs and deployment bindings are configuration, not authentication.
-- Source simulation has write privileges only because this is an owned project
+- Source-change generation has write privileges only because this is an owned project
   source. Fabric ingestion must use read-only source credentials.
 
 The local PostgreSQL example binds to loopback by default. A Windows gateway VM
@@ -22,6 +22,6 @@ and PostgreSQL authentication rules. Do not expose port 5432 to the internet.
 
 ## Scope
 
-This portfolio demonstrates production-style patterns; it is not an assertion
+This implementation uses production-style patterns; it is not an assertion
 of a production SLA, independently enforced approvals or completed Production
 cutover. Read the readiness blockers before any cloud execution.
