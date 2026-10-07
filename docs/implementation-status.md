@@ -16,9 +16,9 @@ outcomes, not a fresh Fabric health or data-count audit.
 
 ## Open Work
 
-1. Coherent reference-version/as-of semantics for independent S3 arrivals.
-2. Recoverable accepted/rejected classification transitions.
-3. Silver checkpoints based on a frozen committed input boundary, not completion time.
+1. [Coherent reference versions for independent S3 arrivals](https://github.com/dimpupraharsh/fabric-data-platform/issues/3).
+2. [Recoverable accepted/rejected classification transitions](https://github.com/dimpupraharsh/fabric-data-platform/issues/4).
+3. [Frozen committed-input Silver checkpoints](https://github.com/dimpupraharsh/fabric-data-platform/issues/5), not completion-time boundaries.
 4. Expanded physical Copy, manifest/recovery and concurrent-arrival tests.
 5. Production migration, target bindings, semantic serving and schedule cutover.
 6. Dedicated AWS infrastructure OIDC authorization and remaining governance gates.
